@@ -16,28 +16,30 @@ function resize() {
   }
 }
 window.addEventListener('resize', resize);
-resize();
-
-// Ball state
-const ball = {
-  x: canvas.width / 2,
-  y: canvas.height / 2,
-  vx: Math.random() * 4 - 2,  // Random initial velocity -2 to 2
-  vy: Math.random() * 4 - 2,
-  radius: 80,
-  color: randomColor(),
-};
-
-// Physics constants
-const GRAVITY = 0.3;
-const FRICTION = 0.99;
-const BOUNCE_DAMPING = 0.85;
 
 // Utility: random bright color
 function randomColor() {
   const hue = Math.floor(Math.random() * 360);
   return `hsl(${hue}, 80%, 60%)`;
 }
+
+// Ball state
+const ball = {
+  x: window.innerWidth / 2,
+  y: window.innerHeight / 2,
+  vx: Math.random() * 4 - 2,  // Random initial velocity -2 to 2
+  vy: Math.random() * 4 - 2,
+  radius: 80,
+  color: randomColor(),
+};
+
+// Now that ball exists, we can safely resize
+resize();
+
+// Physics constants
+const GRAVITY = 0.3;
+const FRICTION = 0.99;
+const BOUNCE_DAMPING = 0.85;
 
 // Physics update
 function updatePhysics() {
@@ -53,25 +55,18 @@ function updatePhysics() {
   ball.y += ball.vy;
 
   // Wall collision detection and bouncing
-  // Left wall
   if (ball.x - ball.radius < 0) {
     ball.x = ball.radius;
     ball.vx = Math.abs(ball.vx) * BOUNCE_DAMPING;
   }
-
-  // Right wall
   if (ball.x + ball.radius > canvas.width) {
     ball.x = canvas.width - ball.radius;
     ball.vx = -Math.abs(ball.vx) * BOUNCE_DAMPING;
   }
-
-  // Top wall
   if (ball.y - ball.radius < 0) {
     ball.y = ball.radius;
     ball.vy = Math.abs(ball.vy) * BOUNCE_DAMPING;
   }
-
-  // Bottom wall
   if (ball.y + ball.radius > canvas.height) {
     ball.y = canvas.height - ball.radius;
     ball.vy = -Math.abs(ball.vy) * BOUNCE_DAMPING;
@@ -271,17 +266,14 @@ const debugConsole = (() => {
     originalLog.apply(console, args);
     addMessage('log', args);
   };
-
   console.warn = (...args) => {
     originalWarn.apply(console, args);
     addMessage('warn', args);
   };
-
   console.error = (...args) => {
     originalError.apply(console, args);
     addMessage('error', args);
   };
-
   console.info = (...args) => {
     originalInfo.apply(console, args);
     addMessage('info', args);
