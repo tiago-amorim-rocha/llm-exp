@@ -473,13 +473,14 @@ try {
   canvas.width = Math.floor(initialVw * initialDpr);
   canvas.height = Math.floor(initialVh * initialDpr);
 
-  // Create multiple balls with non-overlapping positions
+  // Create multiple balls with grid-based placement (smarter algorithm)
   const balls = [];
   const NUM_BALLS = 40;
   const MAX_BALL_RADIUS = 45; // Used for boundary calculations
 
+  // First, draw all letters and create ball data (unsorted)
+  const ballData = [];
   for (let i = 0; i < NUM_BALLS; i++) {
-    // Draw a letter from the bag
     const letter = letterBag.draw();
     if (!letter) {
       console.error('Ran out of letters in bag!');
@@ -489,32 +490,75 @@ try {
     const frequency = LETTER_FREQUENCY[letter];
     const radius = getRadiusForFrequency(frequency);
 
-    let attempts = 0;
-    let newBall;
-
-    // Try to find a non-overlapping position
-    do {
-      newBall = {
-        x: radius + Math.random() * (logicalWidth - 2 * radius),
-        y: radius + Math.random() * (logicalHeight - 2 * radius),
-        vx: Math.random() * 4 - 2,
-        vy: Math.random() * 4 - 2,
-        radius: radius,
-        color: getColorForLetter(letter),
-        letter: letter,
-      };
-      attempts++;
-    } while (balls.some(ball => ballsOverlap(newBall, ball)) && attempts < 100);
-
-    // Only add if we found a valid position
-    if (attempts < 100) {
-      balls.push(newBall);
-    } else {
-      // Failed to place ball, return letter to bag
-      letterBag.return(letter);
-      console.warn(`Could not place ball with letter ${letter}`);
-    }
+    ballData.push({
+      letter: letter,
+      frequency: frequency,
+      radius: radius,
+      color: getColorForLetter(letter)
+    });
   }
+
+  // Sort by radius (largest first) - ensures big balls get placed when more space available
+  ballData.sort((a, b) => b.radius - a.radius);
+
+  // Grid-based placement with randomization
+  // Calculate grid dimensions based on average ball size
+  const avgRadius = ballData.reduce((sum, b) => sum + b.radius, 0) / ballData.length;
+  const cellSize = avgRadius * 2.5; // Space between ball centers
+  const cols = Math.floor(logicalWidth / cellSize);
+  const rows = Math.floor(logicalHeight / cellSize);
+  const totalCells = cols * rows;
+
+  // Offset to center the grid
+  const offsetX = (logicalWidth - (cols - 1) * cellSize) / 2;
+  const offsetY = (logicalHeight - (rows - 1) * cellSize) / 2;
+
+  // Create shuffled cell indices
+  const cellIndices = [];
+  for (let i = 0; i < totalCells; i++) {
+    cellIndices.push(i);
+  }
+  // Shuffle cell indices for random placement order
+  for (let i = cellIndices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cellIndices[i], cellIndices[j]] = [cellIndices[j], cellIndices[i]];
+  }
+
+  // Place each ball in a grid cell with jitter
+  ballData.forEach((data, index) => {
+    if (index >= totalCells) {
+      // More balls than grid cells - return to bag
+      letterBag.return(data.letter);
+      console.warn(`Not enough grid space for ball with letter ${data.letter}`);
+      return;
+    }
+
+    const cellIndex = cellIndices[index];
+    const col = cellIndex % cols;
+    const row = Math.floor(cellIndex / cols);
+
+    // Base position at grid cell center
+    const baseX = offsetX + col * cellSize;
+    const baseY = offsetY + row * cellSize;
+
+    // Add jitter (random offset within cell, but keep ball fully inside bounds)
+    const jitterAmount = cellSize * 0.3; // 30% jitter
+    const jitterX = (Math.random() - 0.5) * jitterAmount;
+    const jitterY = (Math.random() - 0.5) * jitterAmount;
+
+    const x = Math.max(data.radius, Math.min(logicalWidth - data.radius, baseX + jitterX));
+    const y = Math.max(data.radius, Math.min(logicalHeight - data.radius, baseY + jitterY));
+
+    balls.push({
+      x: x,
+      y: y,
+      vx: Math.random() * 4 - 2,
+      vy: Math.random() * 4 - 2,
+      radius: data.radius,
+      color: data.color,
+      letter: data.letter,
+    });
+  });
 
   const bagState = letterBag.getState();
   console.log(`Created ${balls.length} balls | Bag: ${bagState.available} available, ${bagState.inPlay} in play, ${bagState.total} total`);
