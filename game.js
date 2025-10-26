@@ -540,8 +540,8 @@ try {
   // Ball spawning system - spawn balls one at a time from above
   let spawnIndex = 0;
   let lastSpawnTime = 0;
-  const SPAWN_DELAY = 150; // ms between spawn attempts
-  const SPAWN_RETRY_DELAY = 50; // ms to wait before retrying if collision detected
+  const SPAWN_DELAY = 50; // ms between spawn attempts (3x faster)
+  const SPAWN_RETRY_DELAY = 17; // ms to wait before retrying if collision detected (3x faster)
   const SPAWN_ZONE_HEIGHT = 200; // Height above screen to spawn balls
   let isRetrying = false;
 
