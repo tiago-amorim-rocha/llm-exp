@@ -333,11 +333,31 @@ try {
     return `hsl(${hue}, 80%, 60%)`;
   }
 
+  // Letter frequency in English (approximate percentages)
+  const LETTER_FREQUENCY = {
+    'E': 12.70, 'T': 9.06, 'A': 8.17, 'O': 7.51, 'I': 6.97, 'N': 6.75,
+    'S': 6.33, 'H': 6.09, 'R': 5.99, 'D': 4.25, 'L': 4.03, 'C': 2.78,
+    'U': 2.76, 'M': 2.41, 'W': 2.36, 'F': 2.23, 'G': 2.02, 'Y': 1.97,
+    'P': 1.93, 'B': 1.29, 'V': 0.98, 'K': 0.77, 'J': 0.15, 'X': 0.15,
+    'Q': 0.10, 'Z': 0.07
+  };
+
   // Utility: random letter (weighted towards common letters)
   function randomLetter() {
     // Common English letter distribution for better word formation
     const letters = 'AAAAAABBCCCDDDDEEEEEEEEEEFFFGGGHHHIIIIIIIIIJKLLLLMMMNNNNNNOOOOOOOOPPQRRRRRRSSSSSSTTTTTTUUUUVVWWXYYZ';
-    return letters[Math.floor(Math.random() * letters.length)];
+    const letter = letters[Math.floor(Math.random() * letters.length)];
+    return { letter, frequency: LETTER_FREQUENCY[letter] };
+  }
+
+  // Calculate ball radius based on letter frequency (less frequent = bigger)
+  function getRadiusForFrequency(frequency) {
+    // Min radius for most frequent letters (E: 12.70%), Max for least frequent (Z: 0.07%)
+    const MIN_RADIUS = 30;
+    const MAX_RADIUS = 60;
+    // Inverse relationship: lower frequency = larger radius
+    const normalizedFrequency = (frequency - 0.07) / (12.70 - 0.07);
+    return MAX_RADIUS - (normalizedFrequency * (MAX_RADIUS - MIN_RADIUS));
   }
 
   // Check if two balls overlap
@@ -360,8 +380,8 @@ try {
 
   // Create multiple balls with non-overlapping positions
   const balls = [];
-  const NUM_BALLS = 20;
-  const BALL_RADIUS = 50;
+  const NUM_BALLS = 30;
+  const MAX_BALL_RADIUS = 60; // Used for boundary calculations
 
   for (let i = 0; i < NUM_BALLS; i++) {
     let attempts = 0;
@@ -369,14 +389,17 @@ try {
 
     // Try to find a non-overlapping position
     do {
+      const letterData = randomLetter();
+      const radius = getRadiusForFrequency(letterData.frequency);
+
       newBall = {
-        x: BALL_RADIUS + Math.random() * (logicalWidth - 2 * BALL_RADIUS),
-        y: BALL_RADIUS + Math.random() * (logicalHeight - 2 * BALL_RADIUS),
+        x: radius + Math.random() * (logicalWidth - 2 * radius),
+        y: radius + Math.random() * (logicalHeight - 2 * radius),
         vx: Math.random() * 4 - 2,
         vy: Math.random() * 4 - 2,
-        radius: BALL_RADIUS,
+        radius: radius,
         color: randomColor(),
-        letter: randomLetter(),
+        letter: letterData.letter,
       };
       attempts++;
     } while (balls.some(ball => ballsOverlap(newBall, ball)) && attempts < 100);
@@ -496,9 +519,10 @@ try {
       ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw letter on ball
+      // Draw letter on ball (font size scales with radius)
       ctx.fillStyle = '#000';
-      ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+      const fontSize = Math.round(ball.radius * 0.65); // Font size proportional to ball size
+      ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(ball.letter, ball.x, ball.y);
