@@ -118,9 +118,9 @@ const debugConsole = (() => {
     return { wrapper, input };
   }
 
-  const gravityInput = createInput('Gravity', '0.3', '0', '2', '0.1');
-  const frictionInput = createInput('Friction', '0.01', '0', '0.1', '0.01');
-  const bounceInput = createInput('Bounce', '0.9', '0', '1', '0.05');
+  const gravityInput = createInput('Gravity', '0.5', '0', '2', '0.1');
+  const frictionInput = createInput('Friction', '0.15', '0', '1', '0.01');
+  const bounceInput = createInput('Bounce', '0.3', '0', '1', '0.05');
 
   settings.appendChild(gravityInput.wrapper);
   settings.appendChild(frictionInput.wrapper);
@@ -518,8 +518,8 @@ try {
 
   // Physics constants (editable via debug console)
   let GRAVITY = 0.5;
-  let FRICTION = 0.01;
-  let BOUNCE = 0.9;
+  let FRICTION = 0.15;
+  let BOUNCE = 0.3;
 
   // Create walls (NO TOP WALL - balls spawn from above)
   const wallOptions = {
@@ -616,7 +616,9 @@ try {
       restitution: BOUNCE,
       friction: FRICTION,
       density: 0.001,
-      frictionAir: 0.005
+      frictionAir: 0.02,
+      slop: 0.05,
+      sleepThreshold: 60
     });
 
     // Set initial downward velocity
