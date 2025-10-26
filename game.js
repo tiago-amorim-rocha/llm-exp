@@ -285,6 +285,10 @@ try {
   let logicalWidth = window.innerWidth;
   let logicalHeight = window.innerHeight;
 
+  // Track layout viewport to detect actual rotations vs keyboard
+  let lastLayoutWidth = window.innerWidth;
+  let lastLayoutHeight = window.innerHeight;
+
   // Resize canvas
   function resize() {
     try {
@@ -292,14 +296,24 @@ try {
       const vw = Math.round(window.visualViewport?.width || window.innerWidth);
       const vh = Math.round(window.visualViewport?.height || window.innerHeight);
 
+      // Check if layout viewport changed (rotation) or just visual viewport (keyboard)
+      const layoutWidth = window.innerWidth;
+      const layoutHeight = window.innerHeight;
+      const isLayoutChange = (layoutWidth !== lastLayoutWidth || layoutHeight !== lastLayoutHeight);
+
       // Ensure valid dimensions
       if (!vw || !vh || vw <= 0 || vh <= 0) {
         console.warn('Invalid viewport dimensions:', vw, vh);
         return;
       }
 
-      logicalWidth = vw;
-      logicalHeight = vh;
+      // Only update logical dimensions on actual layout changes (not keyboard)
+      if (isLayoutChange) {
+        logicalWidth = layoutWidth;
+        logicalHeight = layoutHeight;
+        lastLayoutWidth = layoutWidth;
+        lastLayoutHeight = layoutHeight;
+      }
 
       canvas.style.width = vw + 'px';
       canvas.style.height = vh + 'px';
@@ -316,7 +330,8 @@ try {
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      if (typeof balls !== 'undefined') {
+      // Only reposition balls on actual layout changes (rotation), not keyboard
+      if (isLayoutChange && typeof balls !== 'undefined') {
         balls.forEach(ball => {
           ball.x = Math.min(Math.max(ball.x, ball.radius), logicalWidth - ball.radius);
           ball.y = Math.min(Math.max(ball.y, ball.radius), logicalHeight - ball.radius);
