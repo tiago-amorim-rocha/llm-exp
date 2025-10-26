@@ -161,8 +161,19 @@ try {
 
       canvas.style.width = vw + 'px';
       canvas.style.height = vh + 'px';
-      canvas.width = Math.floor(vw * dpr);
-      canvas.height = Math.floor(vh * dpr);
+      const physicalWidth = Math.floor(vw * dpr);
+      const physicalHeight = Math.floor(vh * dpr);
+      canvas.width = physicalWidth;
+      canvas.height = physicalHeight;
+
+      console.log('Resize details:', { vw, vh, dpr, physicalWidth, physicalHeight });
+
+      // Check if context is valid before transform
+      if (!ctx) {
+        console.error('Canvas context is null or undefined');
+        return;
+      }
+
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       if (typeof ball !== 'undefined') {
@@ -171,6 +182,15 @@ try {
       }
     } catch (err) {
       console.error('Resize error:', err);
+      console.error('Error message:', err?.message || 'No message');
+      console.error('Error stack:', err?.stack || 'No stack');
+      console.error('Error name:', err?.name || 'No name');
+      console.error('Error type:', err?.constructor?.name || 'Unknown type');
+      console.error('Error toString:', String(err));
+      // Log all enumerable properties
+      for (let key in err) {
+        console.error(`Error.${key}:`, err[key]);
+      }
     }
   }
   window.addEventListener('resize', resize);
