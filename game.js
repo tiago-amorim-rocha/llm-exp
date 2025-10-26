@@ -352,21 +352,22 @@ try {
 
   // Letter distribution optimized for word games
   // Similar to Scrabble but adapted for our game (max copies per letter)
+  // TOTAL BAG SIZE: 52 letters (15 vowels, 37 consonants)
+  // Letters in game NEVER exceed this total
   const LETTER_POOL = {
-    // Vowels (guaranteed good distribution)
+    // Vowels (guaranteed good distribution) - 15 total
     'A': 3, 'E': 4, 'I': 3, 'O': 3, 'U': 2,
-    // Common consonants
+    // Common consonants - 13 total
     'R': 2, 'T': 3, 'N': 2, 'S': 2, 'L': 2, 'D': 2,
-    // Moderate consonants
+    // Moderate consonants - 19 total
     'G': 2, 'H': 2, 'B': 2, 'C': 2, 'M': 2, 'P': 2,
     'F': 2, 'W': 2, 'Y': 2, 'V': 1,
-    // Rare consonants
+    // Rare consonants - 5 total
     'K': 1, 'J': 1, 'X': 1, 'Q': 1, 'Z': 1
   };
 
   // Generate a balanced set of letters for the game
   function generateLetterSet(count) {
-    const letters = [];
     const availableLetters = [];
 
     // Build a pool based on LETTER_POOL limits
@@ -376,24 +377,21 @@ try {
       }
     }
 
+    // Validate that we don't exceed total bag size
+    const totalBagSize = availableLetters.length;
+    if (count > totalBagSize) {
+      console.error(`Cannot spawn ${count} balls - only ${totalBagSize} letters in bag!`);
+      count = totalBagSize; // Cap at bag size
+    }
+
     // Shuffle the available letters
     for (let i = availableLetters.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [availableLetters[i], availableLetters[j]] = [availableLetters[j], availableLetters[i]];
     }
 
-    // Take the first 'count' letters
-    for (let i = 0; i < count && i < availableLetters.length; i++) {
-      letters.push(availableLetters[i]);
-    }
-
-    // If we need more letters than available, fill with common letters
-    while (letters.length < count) {
-      const commonLetters = ['E', 'A', 'R', 'I', 'O', 'T', 'N', 'S'];
-      letters.push(commonLetters[Math.floor(Math.random() * commonLetters.length)]);
-    }
-
-    return letters;
+    // Take the first 'count' letters (never exceeds bag size)
+    return availableLetters.slice(0, count);
   }
 
   // Utility: random letter (weighted towards common letters) - DEPRECATED but kept for compatibility
@@ -468,7 +466,10 @@ try {
     }
   }
 
-  console.log(`Created ${balls.length} balls`);
+  // Calculate total bag size
+  const totalBagSize = Object.values(LETTER_POOL).reduce((sum, count) => sum + count, 0);
+
+  console.log(`Created ${balls.length} balls from bag of ${totalBagSize} total letters`);
 
   // Log letter distribution for debugging
   const letterCounts = {};
@@ -478,6 +479,7 @@ try {
   const vowelCount = balls.filter(b => 'AEIOU'.includes(b.letter)).length;
   console.log('Letter distribution:', Object.entries(letterCounts).sort().map(([l, c]) => `${l}:${c}`).join(' '));
   console.log(`Vowels: ${vowelCount}/${balls.length} (${Math.round(vowelCount/balls.length*100)}%)`);
+  console.log(`Remaining in bag: ${totalBagSize - balls.length}`);
 
   // Now safe to call resize (after all variables are initialized)
   ctx.setTransform(initialDpr, 0, 0, initialDpr, 0, 0);
