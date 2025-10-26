@@ -166,8 +166,6 @@ try {
       canvas.width = physicalWidth;
       canvas.height = physicalHeight;
 
-      console.log('Resize details:', { vw, vh, dpr, physicalWidth, physicalHeight });
-
       // Check if context is valid before transform
       if (!ctx) {
         console.error('Canvas context is null or undefined');
@@ -181,16 +179,8 @@ try {
         ball.y = Math.min(Math.max(ball.y, ball.radius), logicalHeight - ball.radius);
       }
     } catch (err) {
-      console.error('Resize error:', err);
-      console.error('Error message:', err?.message || 'No message');
-      console.error('Error stack:', err?.stack || 'No stack');
-      console.error('Error name:', err?.name || 'No name');
-      console.error('Error type:', err?.constructor?.name || 'Unknown type');
-      console.error('Error toString:', String(err));
-      // Log all enumerable properties
-      for (let key in err) {
-        console.error(`Error.${key}:`, err[key]);
-      }
+      console.error('Resize error:', err?.message || String(err));
+      if (err?.stack) console.error(err.stack);
     }
   }
   window.addEventListener('resize', resize);
@@ -207,8 +197,18 @@ try {
     return `hsl(${hue}, 80%, 60%)`;
   }
 
-  // Initialize dimensions first
-  resize();
+  // Initialize canvas dimensions first (without calling resize to avoid TDZ issues)
+  const initialDpr = Math.max(1, window.devicePixelRatio || 1);
+  const initialVw = Math.round(window.visualViewport?.width || window.innerWidth);
+  const initialVh = Math.round(window.visualViewport?.height || window.innerHeight);
+
+  logicalWidth = initialVw;
+  logicalHeight = initialVh;
+
+  canvas.style.width = initialVw + 'px';
+  canvas.style.height = initialVh + 'px';
+  canvas.width = Math.floor(initialVw * initialDpr);
+  canvas.height = Math.floor(initialVh * initialDpr);
 
   // Ball state
   const ball = {
@@ -219,6 +219,9 @@ try {
     radius: 80,
     color: randomColor(),
   };
+
+  // Now safe to call resize (after all variables are initialized)
+  ctx.setTransform(initialDpr, 0, 0, initialDpr, 0, 0);
 
   // Physics constants
   const GRAVITY = 0.3;
@@ -287,9 +290,9 @@ try {
     console.log('Ball color changed and kicked!');
   });
   document.body.appendChild(button);
+
+  console.log('Game initialized successfully!');
 } catch (e) {
-  console.error('Top-level error caught:', e);
-  console.error('Error message:', e?.message);
-  console.error('Error stack:', e?.stack);
-  console.error('Error type:', e?.constructor?.name);
+  console.error('Game initialization error:', e?.message || String(e));
+  if (e?.stack) console.error(e.stack);
 }
