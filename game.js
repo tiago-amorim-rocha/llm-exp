@@ -421,8 +421,9 @@ try {
   let BOUNCE_DAMPING = 0.9;
   const SLEEP_VELOCITY_THRESHOLD = 0.2; // Stop balls moving slower than this
   const SLEEP_TIME_THRESHOLD = 30; // Frames of low velocity before sleeping
-  const SEPARATION_SLOP = 0.01; // Small buffer to prevent jitter
-  const SEPARATION_PERCENT = 0.8; // How much overlap to correct per frame
+  const SEPARATION_SLOP = 0.001; // Tiny buffer to prevent jitter (reduced from 0.01)
+  const SEPARATION_PERCENT = 1.0; // Full overlap correction per frame
+  const COLLISION_ITERATIONS = 3; // Multiple passes to resolve stacking
 
   // Initialize sleep properties on balls
   balls.forEach(ball => {
@@ -498,70 +499,75 @@ try {
       }
     });
 
-    // Ball-to-ball collisions
-    for (let i = 0; i < balls.length; i++) {
-      for (let j = i + 1; j < balls.length; j++) {
-        const ball1 = balls[i];
-        const ball2 = balls[j];
+    // Ball-to-ball collisions - multiple iterations to resolve stacking
+    for (let iteration = 0; iteration < COLLISION_ITERATIONS; iteration++) {
+      for (let i = 0; i < balls.length; i++) {
+        for (let j = i + 1; j < balls.length; j++) {
+          const ball1 = balls[i];
+          const ball2 = balls[j];
 
-        const dx = ball2.x - ball1.x;
-        const dy = ball2.y - ball1.y;
-        const distanceSquared = dx * dx + dy * dy;
-        const minDistance = ball1.radius + ball2.radius;
-        const minDistanceSquared = minDistance * minDistance;
+          const dx = ball2.x - ball1.x;
+          const dy = ball2.y - ball1.y;
+          const distanceSquared = dx * dx + dy * dy;
+          const minDistance = ball1.radius + ball2.radius;
+          const minDistanceSquared = minDistance * minDistance;
 
-        // Check if balls are colliding
-        if (distanceSquared < minDistanceSquared) {
-          const distance = Math.sqrt(distanceSquared);
+          // Check if balls are colliding
+          if (distanceSquared < minDistanceSquared) {
+            const distance = Math.sqrt(distanceSquared);
 
-          // Handle case where balls are exactly on top of each other
-          let nx, ny;
-          if (distance < 0.001) {
-            // Use a random direction to separate
-            const angle = Math.random() * Math.PI * 2;
-            nx = Math.cos(angle);
-            ny = Math.sin(angle);
-          } else {
-            // Collision normal (unit vector)
-            nx = dx / distance;
-            ny = dy / distance;
-          }
+            // Handle case where balls are exactly on top of each other
+            let nx, ny;
+            if (distance < 0.001) {
+              // Use a random direction to separate
+              const angle = Math.random() * Math.PI * 2;
+              nx = Math.cos(angle);
+              ny = Math.sin(angle);
+            } else {
+              // Collision normal (unit vector)
+              nx = dx / distance;
+              ny = dy / distance;
+            }
 
-          // Wake up both balls if either is involved in collision
-          ball1.sleeping = false;
-          ball2.sleeping = false;
-          ball1.sleepCounter = 0;
-          ball2.sleepCounter = 0;
+            // Wake up both balls if either is involved in collision
+            ball1.sleeping = false;
+            ball2.sleeping = false;
+            ball1.sleepCounter = 0;
+            ball2.sleepCounter = 0;
 
-          // Separate balls using positional correction to prevent overlap
-          const overlap = minDistance - distance;
+            // Separate balls using positional correction to prevent overlap
+            const overlap = minDistance - distance;
 
-          // Apply slop to reduce jitter on resting contact
-          const correctionAmount = Math.max(overlap - SEPARATION_SLOP, 0) * SEPARATION_PERCENT;
-          const separateX = correctionAmount * nx / 2;
-          const separateY = correctionAmount * ny / 2;
+            // Apply slop to reduce jitter on resting contact
+            const correctionAmount = Math.max(overlap - SEPARATION_SLOP, 0) * SEPARATION_PERCENT;
+            const separateX = correctionAmount * nx / 2;
+            const separateY = correctionAmount * ny / 2;
 
-          ball1.x -= separateX;
-          ball1.y -= separateY;
-          ball2.x += separateX;
-          ball2.y += separateY;
+            ball1.x -= separateX;
+            ball1.y -= separateY;
+            ball2.x += separateX;
+            ball2.y += separateY;
 
-          // Relative velocity
-          const dvx = ball2.vx - ball1.vx;
-          const dvy = ball2.vy - ball1.vy;
+            // Only apply velocity impulse on first iteration
+            if (iteration === 0) {
+              // Relative velocity
+              const dvx = ball2.vx - ball1.vx;
+              const dvy = ball2.vy - ball1.vy;
 
-          // Relative velocity along collision normal
-          const dvn = dvx * nx + dvy * ny;
+              // Relative velocity along collision normal
+              const dvn = dvx * nx + dvy * ny;
 
-          // Only resolve if balls are moving towards each other
-          if (dvn < 0) {
-            // Apply impulse (elastic collision, equal mass)
-            const impulse = dvn * BOUNCE_DAMPING;
+              // Only resolve if balls are moving towards each other
+              if (dvn < 0) {
+                // Apply impulse (elastic collision, equal mass)
+                const impulse = dvn * BOUNCE_DAMPING;
 
-            ball1.vx += impulse * nx;
-            ball1.vy += impulse * ny;
-            ball2.vx -= impulse * nx;
-            ball2.vy -= impulse * ny;
+                ball1.vx += impulse * nx;
+                ball1.vy += impulse * ny;
+                ball2.vx -= impulse * nx;
+                ball2.vy -= impulse * ny;
+              }
+            }
           }
         }
       }
