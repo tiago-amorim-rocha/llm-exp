@@ -531,21 +531,236 @@ try {
   // Now safe to call resize (after all variables are initialized)
   ctx.setTransform(initialDpr, 0, 0, initialDpr, 0, 0);
 
+  // ========== Advanced Physics Engine (Box2D-style Sequential Impulse Solver) ==========
+
   // Physics constants (editable via debug console)
   let GRAVITY = 0.3;
   let FRICTION = 0.995;
-  let BOUNCE_DAMPING = 0.9;
-  const SLEEP_VELOCITY_THRESHOLD = 0.2; // Stop balls moving slower than this
-  const SLEEP_TIME_THRESHOLD = 30; // Frames of low velocity before sleeping
-  const SEPARATION_SLOP = 0.001; // Tiny buffer to prevent jitter (reduced from 0.01)
-  const SEPARATION_PERCENT = 1.0; // Full overlap correction per frame
-  const COLLISION_ITERATIONS = 3; // Multiple passes to resolve stacking
+  let BOUNCE_DAMPING = 0.7; // Restitution coefficient (0=inelastic, 1=elastic)
 
-  // Initialize sleep properties on balls
-  balls.forEach(ball => {
+  const SLEEP_VELOCITY_THRESHOLD = 0.15; // Stop balls moving slower than this
+  const SLEEP_TIME_THRESHOLD = 60; // Frames of low velocity before sleeping
+  const SLEEP_ANGULAR_VELOCITY = 0.1; // Not used for circles, but kept for API
+
+  // Solver parameters
+  const VELOCITY_ITERATIONS = 8; // Sequential impulse solver iterations
+  const POSITION_ITERATIONS = 3; // Position correction iterations
+  const SUB_STEPS = 2; // Physics sub-steps per frame
+
+  // Contact parameters
+  const ALLOWED_PENETRATION = 0.05; // Slop for collision tolerance (larger for stability)
+  const BAUMGARTE_FACTOR = 0.2; // Position correction factor (0-1, lower = softer)
+  const CONTACT_THRESHOLD = 0.02; // Distance threshold for contact persistence
+
+  // Initialize physics properties on balls
+  balls.forEach((ball, index) => {
+    ball.id = index; // Unique identifier for contact caching
+    ball.invMass = 1.0; // Inverse mass (1/mass, equal mass for all balls)
     ball.sleeping = false;
     ball.sleepCounter = 0;
   });
+
+  // Contact class - represents a collision between two balls
+  class Contact {
+    constructor(ballA, ballB) {
+      this.ballA = ballA;
+      this.ballB = ballB;
+      this.normalX = 0;
+      this.normalY = 0;
+      this.penetration = 0;
+      this.normalImpulse = 0; // Accumulated impulse for warm starting
+      this.tangentImpulse = 0;
+      this.bias = 0; // Baumgarte stabilization bias
+      this.massNormal = 0; // Effective mass in normal direction
+      this.massTangent = 0; // Effective mass in tangent direction
+    }
+
+    // Generate unique key for this contact pair
+    getKey() {
+      const idA = this.ballA.id;
+      const idB = this.ballB.id;
+      return idA < idB ? `${idA}-${idB}` : `${idB}-${idA}`;
+    }
+
+    // Detect collision and calculate manifold
+    detect() {
+      const dx = this.ballB.x - this.ballA.x;
+      const dy = this.ballB.y - this.ballA.y;
+      const distanceSquared = dx * dx + dy * dy;
+      const radiusSum = this.ballA.radius + this.ballB.radius;
+
+      // Check if colliding
+      if (distanceSquared >= radiusSum * radiusSum) {
+        return false; // No collision
+      }
+
+      const distance = Math.sqrt(distanceSquared);
+
+      // Handle coincident case
+      if (distance < 0.0001) {
+        this.penetration = this.ballA.radius;
+        this.normalX = 1;
+        this.normalY = 0;
+        return true;
+      }
+
+      // Calculate collision normal (from A to B)
+      this.normalX = dx / distance;
+      this.normalY = dy / distance;
+      this.penetration = radiusSum - distance;
+
+      return true;
+    }
+
+    // Pre-solve: calculate effective masses and apply warm starting
+    preSolve(dt) {
+      // Calculate relative velocity
+      const dvx = this.ballB.vx - this.ballA.vx;
+      const dvy = this.ballB.vy - this.ballA.vy;
+
+      // Relative velocity in normal direction
+      const vn = dvx * this.normalX + dvy * this.normalY;
+
+      // Calculate Baumgarte bias for position correction
+      this.bias = -(BAUMGARTE_FACTOR / dt) * Math.max(this.penetration - ALLOWED_PENETRATION, 0);
+
+      // Calculate effective mass in normal direction
+      // For equal mass circles: effectiveMass = 1 / (invMassA + invMassB) = 1 / (1 + 1) = 0.5
+      const invMassSum = this.ballA.invMass + this.ballB.invMass;
+      this.massNormal = invMassSum > 0 ? 1.0 / invMassSum : 0;
+
+      // Tangent direction (perpendicular to normal)
+      const tangentX = -this.normalY;
+      const tangentY = this.normalX;
+      this.massTangent = this.massNormal; // Same for circles
+
+      // Warm starting - apply accumulated impulse from previous frame
+      // This dramatically improves convergence for stacked objects
+      const impulseX = this.normalImpulse * this.normalX + this.tangentImpulse * tangentX;
+      const impulseY = this.normalImpulse * this.normalY + this.tangentImpulse * tangentY;
+
+      this.ballA.vx -= impulseX * this.ballA.invMass;
+      this.ballA.vy -= impulseY * this.ballA.invMass;
+      this.ballB.vx += impulseX * this.ballB.invMass;
+      this.ballB.vy += impulseY * this.ballB.invMass;
+    }
+
+    // Solve velocity constraints (sequential impulse)
+    solveVelocity() {
+      // Calculate relative velocity
+      const dvx = this.ballB.vx - this.ballA.vx;
+      const dvy = this.ballB.vy - this.ballA.vy;
+
+      // === Normal impulse (push balls apart) ===
+      const vn = dvx * this.normalX + dvy * this.normalY;
+
+      // Calculate impulse magnitude (with restitution and bias)
+      let lambda = this.massNormal * (-(vn - this.bias) - BOUNCE_DAMPING * vn);
+
+      // Clamp accumulated impulse (cannot pull objects together)
+      const oldImpulse = this.normalImpulse;
+      this.normalImpulse = Math.max(oldImpulse + lambda, 0);
+      lambda = this.normalImpulse - oldImpulse;
+
+      // Apply normal impulse
+      const impulseX = lambda * this.normalX;
+      const impulseY = lambda * this.normalY;
+
+      this.ballA.vx -= impulseX * this.ballA.invMass;
+      this.ballA.vy -= impulseY * this.ballA.invMass;
+      this.ballB.vx += impulseX * this.ballB.invMass;
+      this.ballB.vy += impulseY * this.ballB.invMass;
+
+      // === Tangent impulse (friction - optional, disabled for bouncy feel) ===
+      // Uncomment below to add friction damping
+      /*
+      const tangentX = -this.normalY;
+      const tangentY = this.normalX;
+      const vt = dvx * tangentX + dvy * tangentY;
+
+      let frictionLambda = -this.massTangent * vt * 0.3; // Friction coefficient
+
+      // Coulomb friction: clamp to friction cone
+      const maxFriction = Math.abs(this.normalImpulse * 0.3);
+      const oldTangentImpulse = this.tangentImpulse;
+      this.tangentImpulse = Math.max(-maxFriction, Math.min(oldTangentImpulse + frictionLambda, maxFriction));
+      frictionLambda = this.tangentImpulse - oldTangentImpulse;
+
+      const frictionImpulseX = frictionLambda * tangentX;
+      const frictionImpulseY = frictionLambda * tangentY;
+
+      this.ballA.vx -= frictionImpulseX * this.ballA.invMass;
+      this.ballA.vy -= frictionImpulseY * this.ballA.invMass;
+      this.ballB.vx += frictionImpulseX * this.ballB.invMass;
+      this.ballB.vy += frictionImpulseY * this.ballB.invMass;
+      */
+    }
+
+    // Solve position constraints (Non-linear Gauss-Seidel)
+    solvePosition() {
+      // Recalculate penetration (positions may have changed)
+      const dx = this.ballB.x - this.ballA.x;
+      const dy = this.ballB.y - this.ballA.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < 0.0001) return; // Degenerate case
+
+      const radiusSum = this.ballA.radius + this.ballB.radius;
+      const penetration = radiusSum - distance;
+
+      // Only correct if penetration exceeds slop
+      if (penetration <= ALLOWED_PENETRATION) return;
+
+      // Normal direction
+      const nx = dx / distance;
+      const ny = dy / distance;
+
+      // Calculate position correction
+      const correction = (penetration - ALLOWED_PENETRATION) / (this.ballA.invMass + this.ballB.invMass);
+      const correctionX = correction * nx;
+      const correctionY = correction * ny;
+
+      // Apply position correction
+      this.ballA.x -= correctionX * this.ballA.invMass;
+      this.ballA.y -= correctionY * this.ballA.invMass;
+      this.ballB.x += correctionX * this.ballB.invMass;
+      this.ballB.y += correctionY * this.ballB.invMass;
+    }
+  }
+
+  // Contact manager - handles contact persistence and caching
+  const contactManager = {
+    contacts: new Map(), // Current frame contacts
+    prevContacts: new Map(), // Previous frame contacts (for warm starting)
+
+    // Clear current contacts and prepare for new frame
+    beginFrame() {
+      this.prevContacts = this.contacts;
+      this.contacts = new Map();
+    },
+
+    // Generate or retrieve contact
+    getContact(ballA, ballB) {
+      const contact = new Contact(ballA, ballB);
+      const key = contact.getKey();
+
+      // Check if contact exists from previous frame
+      const prevContact = this.prevContacts.get(key);
+      if (prevContact) {
+        // Warm start with previous impulses
+        contact.normalImpulse = prevContact.normalImpulse;
+        contact.tangentImpulse = prevContact.tangentImpulse;
+      }
+
+      this.contacts.set(key, contact);
+      return contact;
+    },
+
+    // Get all active contacts
+    getAllContacts() {
+      return Array.from(this.contacts.values());
+    }
+  };
 
   // Expose physics constants to debug console
   window.gamePhysics = {
@@ -557,9 +772,11 @@ try {
     set bounce(val) { BOUNCE_DAMPING = val; },
   };
 
-  function updatePhysics() {
+  // Main physics step
+  function updatePhysics(dt = 1.0) {
+    // Integrate forces and velocities
     balls.forEach(ball => {
-      // Check if ball should be sleeping
+      // Check sleep state
       const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
 
       if (speed < SLEEP_VELOCITY_THRESHOLD) {
@@ -574,125 +791,87 @@ try {
         ball.sleeping = false;
       }
 
-      // Skip physics for sleeping balls
       if (ball.sleeping) return;
 
       // Apply gravity
-      ball.vy += GRAVITY;
+      ball.vy += GRAVITY * dt;
 
-      // Apply friction
-      ball.vx *= FRICTION;
-      ball.vy *= FRICTION;
+      // Apply air resistance
+      ball.vx *= Math.pow(FRICTION, dt);
+      ball.vy *= Math.pow(FRICTION, dt);
 
-      // Stop very slow movement to prevent jitter
-      if (Math.abs(ball.vx) < SLEEP_VELOCITY_THRESHOLD) ball.vx = 0;
-      if (Math.abs(ball.vy) < SLEEP_VELOCITY_THRESHOLD) ball.vy = 0;
+      // Integrate velocity to position
+      ball.x += ball.vx * dt;
+      ball.y += ball.vy * dt;
 
-      // Update position
-      ball.x += ball.vx;
-      ball.y += ball.vy;
-
-      // Wall collisions
+      // Wall collisions with restitution
       if (ball.x - ball.radius < 0) {
         ball.x = ball.radius;
         ball.vx = Math.abs(ball.vx) * BOUNCE_DAMPING;
-        if (Math.abs(ball.vx) < SLEEP_VELOCITY_THRESHOLD) ball.vx = 0;
+        ball.sleepCounter = 0;
       }
       if (ball.x + ball.radius > logicalWidth) {
         ball.x = logicalWidth - ball.radius;
         ball.vx = -Math.abs(ball.vx) * BOUNCE_DAMPING;
-        if (Math.abs(ball.vx) < SLEEP_VELOCITY_THRESHOLD) ball.vx = 0;
+        ball.sleepCounter = 0;
       }
       if (ball.y - ball.radius < 0) {
         ball.y = ball.radius;
         ball.vy = Math.abs(ball.vy) * BOUNCE_DAMPING;
-        if (Math.abs(ball.vy) < SLEEP_VELOCITY_THRESHOLD) ball.vy = 0;
+        ball.sleepCounter = 0;
       }
       if (ball.y + ball.radius > logicalHeight) {
         ball.y = logicalHeight - ball.radius;
         ball.vy = -Math.abs(ball.vy) * BOUNCE_DAMPING;
-        if (Math.abs(ball.vy) < SLEEP_VELOCITY_THRESHOLD) ball.vy = 0;
+        ball.sleepCounter = 0;
       }
     });
 
-    // Ball-to-ball collisions - multiple iterations to resolve stacking
-    for (let iteration = 0; iteration < COLLISION_ITERATIONS; iteration++) {
-      for (let i = 0; i < balls.length; i++) {
-        for (let j = i + 1; j < balls.length; j++) {
-          const ball1 = balls[i];
-          const ball2 = balls[j];
+    // === Collision Detection ===
+    contactManager.beginFrame();
 
-          const dx = ball2.x - ball1.x;
-          const dy = ball2.y - ball1.y;
-          const distanceSquared = dx * dx + dy * dy;
-          const minDistance = ball1.radius + ball2.radius;
-          const minDistanceSquared = minDistance * minDistance;
+    // Broad phase - detect all collisions
+    for (let i = 0; i < balls.length; i++) {
+      for (let j = i + 1; j < balls.length; j++) {
+        const contact = contactManager.getContact(balls[i], balls[j]);
 
-          // Check if balls are colliding
-          if (distanceSquared < minDistanceSquared) {
-            const distance = Math.sqrt(distanceSquared);
-
-            // Handle case where balls are exactly on top of each other
-            let nx, ny;
-            if (distance < 0.001) {
-              // Use a random direction to separate
-              const angle = Math.random() * Math.PI * 2;
-              nx = Math.cos(angle);
-              ny = Math.sin(angle);
-            } else {
-              // Collision normal (unit vector)
-              nx = dx / distance;
-              ny = dy / distance;
-            }
-
-            // Wake up both balls if either is involved in collision
-            ball1.sleeping = false;
-            ball2.sleeping = false;
-            ball1.sleepCounter = 0;
-            ball2.sleepCounter = 0;
-
-            // Separate balls using positional correction to prevent overlap
-            const overlap = minDistance - distance;
-
-            // Apply slop to reduce jitter on resting contact
-            const correctionAmount = Math.max(overlap - SEPARATION_SLOP, 0) * SEPARATION_PERCENT;
-            const separateX = correctionAmount * nx / 2;
-            const separateY = correctionAmount * ny / 2;
-
-            ball1.x -= separateX;
-            ball1.y -= separateY;
-            ball2.x += separateX;
-            ball2.y += separateY;
-
-            // Only apply velocity impulse on first iteration
-            if (iteration === 0) {
-              // Relative velocity
-              const dvx = ball2.vx - ball1.vx;
-              const dvy = ball2.vy - ball1.vy;
-
-              // Relative velocity along collision normal
-              const dvn = dvx * nx + dvy * ny;
-
-              // Only resolve if balls are moving towards each other
-              if (dvn < 0) {
-                // Apply impulse (elastic collision, equal mass)
-                const impulse = dvn * BOUNCE_DAMPING;
-
-                ball1.vx += impulse * nx;
-                ball1.vy += impulse * ny;
-                ball2.vx -= impulse * nx;
-                ball2.vy -= impulse * ny;
-              }
-            }
-          }
+        if (contact.detect()) {
+          // Wake up both balls
+          balls[i].sleeping = false;
+          balls[j].sleeping = false;
+          balls[i].sleepCounter = 0;
+          balls[j].sleepCounter = 0;
+        } else {
+          // Remove non-colliding contact
+          contactManager.contacts.delete(contact.getKey());
         }
       }
+    }
+
+    const contacts = contactManager.getAllContacts();
+
+    // === Pre-solve (calculate effective masses, warm start) ===
+    contacts.forEach(contact => contact.preSolve(dt));
+
+    // === Velocity solver (sequential impulse) ===
+    for (let i = 0; i < VELOCITY_ITERATIONS; i++) {
+      contacts.forEach(contact => contact.solveVelocity());
+    }
+
+    // === Position solver (non-linear Gauss-Seidel) ===
+    for (let i = 0; i < POSITION_ITERATIONS; i++) {
+      contacts.forEach(contact => contact.solvePosition());
     }
   }
 
   function draw() {
     ctx.clearRect(0, 0, logicalWidth, logicalHeight);
-    updatePhysics();
+
+    // Sub-stepping: run physics multiple times per frame for stability
+    const subDt = 1.0 / SUB_STEPS;
+    for (let step = 0; step < SUB_STEPS; step++) {
+      updatePhysics(subDt);
+    }
 
     // Draw all balls
     balls.forEach(ball => {
@@ -715,7 +894,7 @@ try {
   }
   draw();
 
-  console.log(`Physics engine initialized. ${balls.length} balls will bounce with gravity!`);
+  console.log(`Advanced physics engine initialized (Box2D-style Sequential Impulse with ${VELOCITY_ITERATIONS} velocity iterations, ${POSITION_ITERATIONS} position iterations, ${SUB_STEPS} sub-steps). ${balls.length} balls ready!`);
 
   console.log('Game initialized successfully!');
 } catch (e) {
