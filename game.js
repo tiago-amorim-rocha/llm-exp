@@ -282,8 +282,8 @@ try {
   const ctx = canvas.getContext('2d');
 
   // Logical dimensions (fixed at startup - portrait only game)
-  const logicalWidth = window.innerWidth;
-  const logicalHeight = window.innerHeight;
+  const logicalWidth = Math.round(window.visualViewport?.width || window.innerWidth);
+  const logicalHeight = Math.round(window.visualViewport?.height || window.innerHeight);
 
   // Resize canvas (visual only - game world dimensions never change)
   function resize() {
@@ -345,9 +345,6 @@ try {
   const initialDpr = Math.max(1, window.devicePixelRatio || 1);
   const initialVw = Math.round(window.visualViewport?.width || window.innerWidth);
   const initialVh = Math.round(window.visualViewport?.height || window.innerHeight);
-
-  logicalWidth = initialVw;
-  logicalHeight = initialVh;
 
   canvas.style.width = initialVw + 'px';
   canvas.style.height = initialVh + 'px';
