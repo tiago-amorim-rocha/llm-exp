@@ -228,6 +228,7 @@ try {
     background: '#FFFF00',
     color: 'brown',
     cursor: 'pointer',
+    touchAction: 'manipulation',
   });
   button.addEventListener('click', () => {
     ball.color = randomColor();
