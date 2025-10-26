@@ -45,7 +45,7 @@ Object.assign(button.style, {
   padding: '10px 20px',
   borderRadius: '8px',
   border: 'none',
-  background: '#333',
+  background: '#FFFF00',
   color: '#fff',
   cursor: 'pointer',
 });
