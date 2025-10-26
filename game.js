@@ -46,7 +46,7 @@ Object.assign(button.style, {
   borderRadius: '8px',
   border: 'none',
   background: '#FFFF00',
-  color: '#fff',
+  color: 'brown',
   cursor: 'pointer',
 });
 button.addEventListener('click', () => {
