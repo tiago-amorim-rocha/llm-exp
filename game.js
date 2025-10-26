@@ -419,6 +419,16 @@ try {
   let GRAVITY = 0.3;
   let FRICTION = 0.995;
   let BOUNCE_DAMPING = 0.9;
+  const SLEEP_VELOCITY_THRESHOLD = 0.2; // Stop balls moving slower than this
+  const SLEEP_TIME_THRESHOLD = 30; // Frames of low velocity before sleeping
+  const SEPARATION_SLOP = 0.01; // Small buffer to prevent jitter
+  const SEPARATION_PERCENT = 0.8; // How much overlap to correct per frame
+
+  // Initialize sleep properties on balls
+  balls.forEach(ball => {
+    ball.sleeping = false;
+    ball.sleepCounter = 0;
+  });
 
   // Expose physics constants to debug console
   window.gamePhysics = {
@@ -432,9 +442,36 @@ try {
 
   function updatePhysics() {
     balls.forEach(ball => {
+      // Check if ball should be sleeping
+      const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+
+      if (speed < SLEEP_VELOCITY_THRESHOLD) {
+        ball.sleepCounter++;
+        if (ball.sleepCounter > SLEEP_TIME_THRESHOLD) {
+          ball.sleeping = true;
+          ball.vx = 0;
+          ball.vy = 0;
+        }
+      } else {
+        ball.sleepCounter = 0;
+        ball.sleeping = false;
+      }
+
+      // Skip physics for sleeping balls
+      if (ball.sleeping) return;
+
+      // Apply gravity
       ball.vy += GRAVITY;
+
+      // Apply friction
       ball.vx *= FRICTION;
       ball.vy *= FRICTION;
+
+      // Stop very slow movement to prevent jitter
+      if (Math.abs(ball.vx) < SLEEP_VELOCITY_THRESHOLD) ball.vx = 0;
+      if (Math.abs(ball.vy) < SLEEP_VELOCITY_THRESHOLD) ball.vy = 0;
+
+      // Update position
       ball.x += ball.vx;
       ball.y += ball.vy;
 
@@ -442,19 +479,22 @@ try {
       if (ball.x - ball.radius < 0) {
         ball.x = ball.radius;
         ball.vx = Math.abs(ball.vx) * BOUNCE_DAMPING;
+        if (Math.abs(ball.vx) < SLEEP_VELOCITY_THRESHOLD) ball.vx = 0;
       }
       if (ball.x + ball.radius > logicalWidth) {
         ball.x = logicalWidth - ball.radius;
         ball.vx = -Math.abs(ball.vx) * BOUNCE_DAMPING;
+        if (Math.abs(ball.vx) < SLEEP_VELOCITY_THRESHOLD) ball.vx = 0;
       }
       if (ball.y - ball.radius < 0) {
         ball.y = ball.radius;
         ball.vy = Math.abs(ball.vy) * BOUNCE_DAMPING;
+        if (Math.abs(ball.vy) < SLEEP_VELOCITY_THRESHOLD) ball.vy = 0;
       }
       if (ball.y + ball.radius > logicalHeight) {
         ball.y = logicalHeight - ball.radius;
         ball.vy = -Math.abs(ball.vy) * BOUNCE_DAMPING;
-        if (Math.abs(ball.vy) < 0.5) ball.vy = 0;
+        if (Math.abs(ball.vy) < SLEEP_VELOCITY_THRESHOLD) ball.vy = 0;
       }
     });
 
@@ -466,19 +506,40 @@ try {
 
         const dx = ball2.x - ball1.x;
         const dy = ball2.y - ball1.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distanceSquared = dx * dx + dy * dy;
         const minDistance = ball1.radius + ball2.radius;
+        const minDistanceSquared = minDistance * minDistance;
 
         // Check if balls are colliding
-        if (distance < minDistance) {
-          // Collision normal (unit vector)
-          const nx = dx / distance;
-          const ny = dy / distance;
+        if (distanceSquared < minDistanceSquared) {
+          const distance = Math.sqrt(distanceSquared);
 
-          // Separate balls so they're just touching
+          // Handle case where balls are exactly on top of each other
+          let nx, ny;
+          if (distance < 0.001) {
+            // Use a random direction to separate
+            const angle = Math.random() * Math.PI * 2;
+            nx = Math.cos(angle);
+            ny = Math.sin(angle);
+          } else {
+            // Collision normal (unit vector)
+            nx = dx / distance;
+            ny = dy / distance;
+          }
+
+          // Wake up both balls if either is involved in collision
+          ball1.sleeping = false;
+          ball2.sleeping = false;
+          ball1.sleepCounter = 0;
+          ball2.sleepCounter = 0;
+
+          // Separate balls using positional correction to prevent overlap
           const overlap = minDistance - distance;
-          const separateX = (overlap / 2) * nx;
-          const separateY = (overlap / 2) * ny;
+
+          // Apply slop to reduce jitter on resting contact
+          const correctionAmount = Math.max(overlap - SEPARATION_SLOP, 0) * SEPARATION_PERCENT;
+          const separateX = correctionAmount * nx / 2;
+          const separateY = correctionAmount * ny / 2;
 
           ball1.x -= separateX;
           ball1.y -= separateY;
@@ -492,7 +553,7 @@ try {
           // Relative velocity along collision normal
           const dvn = dvx * nx + dvy * ny;
 
-          // Don't resolve if balls are moving apart
+          // Only resolve if balls are moving towards each other
           if (dvn < 0) {
             // Apply impulse (elastic collision, equal mass)
             const impulse = dvn * BOUNCE_DAMPING;
