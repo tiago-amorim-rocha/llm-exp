@@ -329,6 +329,54 @@ try {
         if (Math.abs(ball.vy) < 0.5) ball.vy = 0;
       }
     });
+
+    // Ball-to-ball collisions
+    for (let i = 0; i < balls.length; i++) {
+      for (let j = i + 1; j < balls.length; j++) {
+        const ball1 = balls[i];
+        const ball2 = balls[j];
+
+        const dx = ball2.x - ball1.x;
+        const dy = ball2.y - ball1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const minDistance = ball1.radius + ball2.radius;
+
+        // Check if balls are colliding
+        if (distance < minDistance) {
+          // Collision normal (unit vector)
+          const nx = dx / distance;
+          const ny = dy / distance;
+
+          // Separate balls so they're just touching
+          const overlap = minDistance - distance;
+          const separateX = (overlap / 2) * nx;
+          const separateY = (overlap / 2) * ny;
+
+          ball1.x -= separateX;
+          ball1.y -= separateY;
+          ball2.x += separateX;
+          ball2.y += separateY;
+
+          // Relative velocity
+          const dvx = ball2.vx - ball1.vx;
+          const dvy = ball2.vy - ball1.vy;
+
+          // Relative velocity along collision normal
+          const dvn = dvx * nx + dvy * ny;
+
+          // Don't resolve if balls are moving apart
+          if (dvn < 0) {
+            // Apply impulse (elastic collision, equal mass)
+            const impulse = dvn * BOUNCE_DAMPING;
+
+            ball1.vx += impulse * nx;
+            ball1.vy += impulse * ny;
+            ball2.vx -= impulse * nx;
+            ball2.vy -= impulse * ny;
+          }
+        }
+      }
+    }
   }
 
   function draw() {
