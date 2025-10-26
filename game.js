@@ -119,8 +119,8 @@ const debugConsole = (() => {
   }
 
   const gravityInput = createInput('Gravity', '0.3', '0', '2', '0.1');
-  const frictionInput = createInput('Friction', '0.99', '0.8', '1', '0.01');
-  const bounceInput = createInput('Bounce', '0.85', '0', '1', '0.05');
+  const frictionInput = createInput('Friction', '0.995', '0.8', '1', '0.01');
+  const bounceInput = createInput('Bounce', '0.9', '0', '1', '0.05');
 
   settings.appendChild(gravityInput.wrapper);
   settings.appendChild(frictionInput.wrapper);
@@ -386,8 +386,8 @@ try {
 
   // Physics constants (editable via debug console)
   let GRAVITY = 0.3;
-  let FRICTION = 0.99;
-  let BOUNCE_DAMPING = 0.85;
+  let FRICTION = 0.995;
+  let BOUNCE_DAMPING = 0.9;
 
   // Expose physics constants to debug console
   window.gamePhysics = {
@@ -515,7 +515,7 @@ try {
     if (balls.length > 0) {
       const randomBall = balls[Math.floor(Math.random() * balls.length)];
       randomBall.color = randomColor();
-      randomBall.vy -= 5;
+      randomBall.vy -= 10;
       console.log('Random ball color changed and kicked!');
     }
   });
