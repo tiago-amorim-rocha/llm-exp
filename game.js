@@ -333,6 +333,14 @@ try {
     return `hsl(${hue}, 80%, 60%)`;
   }
 
+  // Utility: get consistent color for a letter
+  function getColorForLetter(letter) {
+    // Each letter gets a consistent hue based on its position in alphabet
+    const charCode = letter.charCodeAt(0) - 65; // A=0, B=1, ..., Z=25
+    const hue = (charCode * 360 / 26) % 360; // Distribute evenly across color wheel
+    return `hsl(${hue}, 75%, 60%)`;
+  }
+
   // Letter frequency in English (approximate percentages)
   const LETTER_FREQUENCY = {
     'E': 12.70, 'T': 9.06, 'A': 8.17, 'O': 7.51, 'I': 6.97, 'N': 6.75,
@@ -380,7 +388,7 @@ try {
 
   // Create multiple balls with non-overlapping positions
   const balls = [];
-  const NUM_BALLS = 30;
+  const NUM_BALLS = 40;
   const MAX_BALL_RADIUS = 45; // Used for boundary calculations
 
   for (let i = 0; i < NUM_BALLS; i++) {
@@ -398,7 +406,7 @@ try {
         vx: Math.random() * 4 - 2,
         vy: Math.random() * 4 - 2,
         radius: radius,
-        color: randomColor(),
+        color: getColorForLetter(letterData.letter),
         letter: letterData.letter,
       };
       attempts++;
