@@ -139,11 +139,18 @@ try {
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
 
+  // Logical dimensions (updated by resize)
+  let logicalWidth = window.innerWidth;
+  let logicalHeight = window.innerHeight;
+
   // Resize canvas
   function resize() {
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     const vw = Math.round(window.visualViewport?.width || window.innerWidth);
     const vh = Math.round(window.visualViewport?.height || window.innerHeight);
+
+    logicalWidth = vw;
+    logicalHeight = vh;
 
     canvas.style.width = vw + 'px';
     canvas.style.height = vh + 'px';
@@ -152,11 +159,17 @@ try {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     if (typeof ball !== 'undefined') {
-      ball.x = Math.min(Math.max(ball.x, ball.radius), canvas.width / dpr - ball.radius);
-      ball.y = Math.min(Math.max(ball.y, ball.radius), canvas.height / dpr - ball.radius);
+      ball.x = Math.min(Math.max(ball.x, ball.radius), logicalWidth - ball.radius);
+      ball.y = Math.min(Math.max(ball.y, ball.radius), logicalHeight - ball.radius);
     }
   }
   window.addEventListener('resize', resize);
+
+  // Listen to visualViewport for iOS Safari
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', resize);
+    window.visualViewport.addEventListener('scroll', resize);
+  }
 
   // Utility: random bright color
   function randomColor() {
@@ -164,18 +177,18 @@ try {
     return `hsl(${hue}, 80%, 60%)`;
   }
 
+  // Initialize dimensions first
+  resize();
+
   // Ball state
   const ball = {
-    x: window.innerWidth / 2,
-    y: window.innerHeight / 2,
+    x: logicalWidth / 2,
+    y: logicalHeight / 2,
     vx: Math.random() * 4 - 2,
     vy: Math.random() * 4 - 2,
     radius: 80,
     color: randomColor(),
   };
-
-  // Now safe to resize
-  resize();
 
   // Physics constants
   const GRAVITY = 0.3;
@@ -193,23 +206,23 @@ try {
       ball.x = ball.radius;
       ball.vx = Math.abs(ball.vx) * BOUNCE_DAMPING;
     }
-    if (ball.x + ball.radius > canvas.width) {
-      ball.x = canvas.width - ball.radius;
+    if (ball.x + ball.radius > logicalWidth) {
+      ball.x = logicalWidth - ball.radius;
       ball.vx = -Math.abs(ball.vx) * BOUNCE_DAMPING;
     }
     if (ball.y - ball.radius < 0) {
       ball.y = ball.radius;
       ball.vy = Math.abs(ball.vy) * BOUNCE_DAMPING;
     }
-    if (ball.y + ball.radius > canvas.height) {
-      ball.y = canvas.height - ball.radius;
+    if (ball.y + ball.radius > logicalHeight) {
+      ball.y = logicalHeight - ball.radius;
       ball.vy = -Math.abs(ball.vy) * BOUNCE_DAMPING;
       if (Math.abs(ball.vy) < 0.5) ball.vy = 0;
     }
   }
 
   function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     updatePhysics();
     ctx.fillStyle = ball.color;
     ctx.beginPath();
