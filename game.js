@@ -350,7 +350,53 @@ try {
     'Q': 0.10, 'Z': 0.07
   };
 
-  // Utility: random letter (weighted towards common letters)
+  // Letter distribution optimized for word games
+  // Similar to Scrabble but adapted for our game (max copies per letter)
+  const LETTER_POOL = {
+    // Vowels (guaranteed good distribution)
+    'A': 3, 'E': 4, 'I': 3, 'O': 3, 'U': 2,
+    // Common consonants
+    'R': 2, 'T': 3, 'N': 2, 'S': 2, 'L': 2, 'D': 2,
+    // Moderate consonants
+    'G': 2, 'H': 2, 'B': 2, 'C': 2, 'M': 2, 'P': 2,
+    'F': 2, 'W': 2, 'Y': 2, 'V': 1,
+    // Rare consonants
+    'K': 1, 'J': 1, 'X': 1, 'Q': 1, 'Z': 1
+  };
+
+  // Generate a balanced set of letters for the game
+  function generateLetterSet(count) {
+    const letters = [];
+    const availableLetters = [];
+
+    // Build a pool based on LETTER_POOL limits
+    for (const [letter, maxCount] of Object.entries(LETTER_POOL)) {
+      for (let i = 0; i < maxCount; i++) {
+        availableLetters.push(letter);
+      }
+    }
+
+    // Shuffle the available letters
+    for (let i = availableLetters.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [availableLetters[i], availableLetters[j]] = [availableLetters[j], availableLetters[i]];
+    }
+
+    // Take the first 'count' letters
+    for (let i = 0; i < count && i < availableLetters.length; i++) {
+      letters.push(availableLetters[i]);
+    }
+
+    // If we need more letters than available, fill with common letters
+    while (letters.length < count) {
+      const commonLetters = ['E', 'A', 'R', 'I', 'O', 'T', 'N', 'S'];
+      letters.push(commonLetters[Math.floor(Math.random() * commonLetters.length)]);
+    }
+
+    return letters;
+  }
+
+  // Utility: random letter (weighted towards common letters) - DEPRECATED but kept for compatibility
   function randomLetter() {
     // Common English letter distribution for better word formation
     const letters = 'AAAAAABBCCCDDDDEEEEEEEEEEFFFGGGHHHIIIIIIIIIJKLLLLMMMNNNNNNOOOOOOOOPPQRRRRRRSSSSSSTTTTTTUUUUVVWWXYYZ';
@@ -391,23 +437,27 @@ try {
   const NUM_BALLS = 40;
   const MAX_BALL_RADIUS = 45; // Used for boundary calculations
 
+  // Generate a balanced set of letters for all balls
+  const letterSet = generateLetterSet(NUM_BALLS);
+
   for (let i = 0; i < NUM_BALLS; i++) {
     let attempts = 0;
     let newBall;
 
+    const letter = letterSet[i];
+    const frequency = LETTER_FREQUENCY[letter];
+    const radius = getRadiusForFrequency(frequency);
+
     // Try to find a non-overlapping position
     do {
-      const letterData = randomLetter();
-      const radius = getRadiusForFrequency(letterData.frequency);
-
       newBall = {
         x: radius + Math.random() * (logicalWidth - 2 * radius),
         y: radius + Math.random() * (logicalHeight - 2 * radius),
         vx: Math.random() * 4 - 2,
         vy: Math.random() * 4 - 2,
         radius: radius,
-        color: getColorForLetter(letterData.letter),
-        letter: letterData.letter,
+        color: getColorForLetter(letter),
+        letter: letter,
       };
       attempts++;
     } while (balls.some(ball => ballsOverlap(newBall, ball)) && attempts < 100);
@@ -419,6 +469,15 @@ try {
   }
 
   console.log(`Created ${balls.length} balls`);
+
+  // Log letter distribution for debugging
+  const letterCounts = {};
+  balls.forEach(ball => {
+    letterCounts[ball.letter] = (letterCounts[ball.letter] || 0) + 1;
+  });
+  const vowelCount = balls.filter(b => 'AEIOU'.includes(b.letter)).length;
+  console.log('Letter distribution:', Object.entries(letterCounts).sort().map(([l, c]) => `${l}:${c}`).join(' '));
+  console.log(`Vowels: ${vowelCount}/${balls.length} (${Math.round(vowelCount/balls.length*100)}%)`);
 
   // Now safe to call resize (after all variables are initialized)
   ctx.setTransform(initialDpr, 0, 0, initialDpr, 0, 0);
