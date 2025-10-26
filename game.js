@@ -69,6 +69,79 @@ const debugConsole = (() => {
   header.appendChild(title);
   header.appendChild(buttonContainer);
 
+  // Settings section
+  const settings = document.createElement('div');
+  Object.assign(settings.style, {
+    padding: '10px',
+    background: '#1a1a1a',
+    borderBottom: '1px solid #333',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: '8px',
+    fontSize: '11px',
+  });
+
+  const settingsTitle = document.createElement('div');
+  settingsTitle.textContent = 'Physics Settings';
+  settingsTitle.style.gridColumn = '1 / -1';
+  settingsTitle.style.fontWeight = 'bold';
+  settingsTitle.style.marginBottom = '4px';
+  settings.appendChild(settingsTitle);
+
+  // Helper to create labeled input
+  function createInput(label, value, min, max, step) {
+    const wrapper = document.createElement('div');
+    const labelEl = document.createElement('label');
+    labelEl.textContent = label;
+    labelEl.style.display = 'block';
+    labelEl.style.marginBottom = '2px';
+    labelEl.style.color = '#aaa';
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.value = value;
+    input.min = min;
+    input.max = max;
+    input.step = step;
+    Object.assign(input.style, {
+      width: '100%',
+      padding: '4px',
+      background: '#222',
+      color: '#fff',
+      border: '1px solid #444',
+      borderRadius: '3px',
+      fontSize: '11px',
+    });
+
+    wrapper.appendChild(labelEl);
+    wrapper.appendChild(input);
+    return { wrapper, input };
+  }
+
+  const gravityInput = createInput('Gravity', '0.3', '0', '2', '0.1');
+  const frictionInput = createInput('Friction', '0.99', '0.8', '1', '0.01');
+  const bounceInput = createInput('Bounce', '0.85', '0', '1', '0.05');
+
+  settings.appendChild(gravityInput.wrapper);
+  settings.appendChild(frictionInput.wrapper);
+  settings.appendChild(bounceInput.wrapper);
+
+  // Apply button
+  const applyBtn = document.createElement('button');
+  applyBtn.textContent = 'Apply Settings';
+  Object.assign(applyBtn.style, {
+    gridColumn: '1 / -1',
+    padding: '6px',
+    background: '#2196f3',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    fontSize: '11px',
+    marginTop: '4px',
+  });
+  settings.appendChild(applyBtn);
+
   const messages = document.createElement('div');
   Object.assign(messages.style, {
     padding: '10px',
@@ -77,6 +150,7 @@ const debugConsole = (() => {
   });
 
   container.appendChild(header);
+  container.appendChild(settings);
   container.appendChild(messages);
   document.body.appendChild(container);
 
@@ -128,6 +202,30 @@ const debugConsole = (() => {
   });
 
   clearBtn.addEventListener('click', () => (messages.innerHTML = ''));
+
+  applyBtn.addEventListener('click', () => {
+    if (window.gamePhysics) {
+      window.gamePhysics.gravity = parseFloat(gravityInput.input.value);
+      window.gamePhysics.friction = parseFloat(frictionInput.input.value);
+      window.gamePhysics.bounce = parseFloat(bounceInput.input.value);
+
+      const originalText = applyBtn.textContent;
+      const originalBg = applyBtn.style.background;
+      applyBtn.textContent = 'Applied!';
+      applyBtn.style.background = '#4caf50';
+
+      console.log('Physics settings updated:', {
+        gravity: window.gamePhysics.gravity,
+        friction: window.gamePhysics.friction,
+        bounce: window.gamePhysics.bounce,
+      });
+
+      setTimeout(() => {
+        applyBtn.textContent = originalText;
+        applyBtn.style.background = originalBg;
+      }, 1500);
+    }
+  });
 
   function addMessage(type, args) {
     const msg = document.createElement('div');
@@ -297,10 +395,20 @@ try {
   // Now safe to call resize (after all variables are initialized)
   ctx.setTransform(initialDpr, 0, 0, initialDpr, 0, 0);
 
-  // Physics constants
-  const GRAVITY = 0.3;
-  const FRICTION = 0.99;
-  const BOUNCE_DAMPING = 0.85;
+  // Physics constants (editable via debug console)
+  let GRAVITY = 0.3;
+  let FRICTION = 0.99;
+  let BOUNCE_DAMPING = 0.85;
+
+  // Expose physics constants to debug console
+  window.gamePhysics = {
+    get gravity() { return GRAVITY; },
+    set gravity(val) { GRAVITY = val; },
+    get friction() { return FRICTION; },
+    set friction(val) { FRICTION = val; },
+    get bounce() { return BOUNCE_DAMPING; },
+    set bounce(val) { BOUNCE_DAMPING = val; },
+  };
 
   function updatePhysics() {
     balls.forEach(ball => {
