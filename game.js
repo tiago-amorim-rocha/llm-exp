@@ -333,6 +333,13 @@ try {
     return `hsl(${hue}, 80%, 60%)`;
   }
 
+  // Utility: random letter (weighted towards common letters)
+  function randomLetter() {
+    // Common English letter distribution for better word formation
+    const letters = 'AAAAAABBCCCDDDDEEEEEEEEEEFFFGGGHHHIIIIIIIIIJKLLLLMMMNNNNNNOOOOOOOOPPQRRRRRRSSSSSSTTTTTTUUUUVVWWXYYZ';
+    return letters[Math.floor(Math.random() * letters.length)];
+  }
+
   // Check if two balls overlap
   function ballsOverlap(ball1, ball2) {
     const dx = ball1.x - ball2.x;
@@ -353,7 +360,7 @@ try {
 
   // Create multiple balls with non-overlapping positions
   const balls = [];
-  const NUM_BALLS = 5;
+  const NUM_BALLS = 20;
   const BALL_RADIUS = 50;
 
   for (let i = 0; i < NUM_BALLS; i++) {
@@ -369,6 +376,7 @@ try {
         vy: Math.random() * 4 - 2,
         radius: BALL_RADIUS,
         color: randomColor(),
+        letter: randomLetter(),
       };
       attempts++;
     } while (balls.some(ball => ballsOverlap(newBall, ball)) && attempts < 100);
@@ -482,10 +490,18 @@ try {
 
     // Draw all balls
     balls.forEach(ball => {
+      // Draw ball circle
       ctx.fillStyle = ball.color;
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
       ctx.fill();
+
+      // Draw letter on ball
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(ball.letter, ball.x, ball.y);
     });
 
     requestAnimationFrame(draw);
@@ -493,33 +509,6 @@ try {
   draw();
 
   console.log(`Physics engine initialized. ${balls.length} balls will bounce with gravity!`);
-
-  // Button logic
-  const button = document.createElement('button');
-  button.textContent = 'Change Color';
-  Object.assign(button.style, {
-    position: 'fixed',
-    left: '50%',
-    bottom: 'calc(40px + env(safe-area-inset-bottom, 0px))',
-    transform: 'translateX(-50%)',
-    font: '16px system-ui, -apple-system, sans-serif',
-    padding: '10px 20px',
-    borderRadius: '8px',
-    border: 'none',
-    background: '#FFFF00',
-    color: 'brown',
-    cursor: 'pointer',
-    touchAction: 'manipulation',
-  });
-  button.addEventListener('click', () => {
-    if (balls.length > 0) {
-      const randomBall = balls[Math.floor(Math.random() * balls.length)];
-      randomBall.color = randomColor();
-      randomBall.vy -= 10;
-      console.log('Random ball color changed and kicked!');
-    }
-  });
-  document.body.appendChild(button);
 
   console.log('Game initialized successfully!');
 } catch (e) {
