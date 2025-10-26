@@ -33,6 +33,24 @@ const debugConsole = (() => {
   title.textContent = 'Debug Console';
   title.style.fontWeight = 'bold';
 
+  const buttonContainer = document.createElement('div');
+  Object.assign(buttonContainer.style, {
+    display: 'flex',
+    gap: '8px',
+  });
+
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = 'Copy';
+  Object.assign(copyBtn.style, {
+    padding: '4px 8px',
+    background: '#333',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    fontSize: '11px',
+  });
+
   const clearBtn = document.createElement('button');
   clearBtn.textContent = 'Clear';
   Object.assign(clearBtn.style, {
@@ -45,8 +63,11 @@ const debugConsole = (() => {
     fontSize: '11px',
   });
 
+  buttonContainer.appendChild(copyBtn);
+  buttonContainer.appendChild(clearBtn);
+
   header.appendChild(title);
-  header.appendChild(clearBtn);
+  header.appendChild(buttonContainer);
 
   const messages = document.createElement('div');
   Object.assign(messages.style, {
@@ -83,6 +104,29 @@ const debugConsole = (() => {
     container.style.display = isVisible ? 'block' : 'none';
     toggleBtn.textContent = isVisible ? '✕' : '🐛';
   });
+
+  copyBtn.addEventListener('click', async () => {
+    const text = messages.innerText;
+    try {
+      await navigator.clipboard.writeText(text);
+      const originalText = copyBtn.textContent;
+      copyBtn.textContent = 'Copied!';
+      copyBtn.style.background = '#4caf50';
+      setTimeout(() => {
+        copyBtn.textContent = originalText;
+        copyBtn.style.background = '#333';
+      }, 2000);
+    } catch (err) {
+      copyBtn.textContent = 'Failed';
+      copyBtn.style.background = '#f44336';
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy';
+        copyBtn.style.background = '#333';
+      }, 2000);
+      console.error('Copy failed:', err);
+    }
+  });
+
   clearBtn.addEventListener('click', () => (messages.innerHTML = ''));
 
   function addMessage(type, args) {
