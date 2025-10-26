@@ -218,9 +218,11 @@ try {
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      if (typeof ball !== 'undefined') {
-        ball.x = Math.min(Math.max(ball.x, ball.radius), logicalWidth - ball.radius);
-        ball.y = Math.min(Math.max(ball.y, ball.radius), logicalHeight - ball.radius);
+      if (typeof balls !== 'undefined') {
+        balls.forEach(ball => {
+          ball.x = Math.min(Math.max(ball.x, ball.radius), logicalWidth - ball.radius);
+          ball.y = Math.min(Math.max(ball.y, ball.radius), logicalHeight - ball.radius);
+        });
       }
     } catch (err) {
       console.error('Resize error:', err?.message || String(err));
@@ -241,6 +243,14 @@ try {
     return `hsl(${hue}, 80%, 60%)`;
   }
 
+  // Check if two balls overlap
+  function ballsOverlap(ball1, ball2) {
+    const dx = ball1.x - ball2.x;
+    const dy = ball1.y - ball2.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return distance < (ball1.radius + ball2.radius);
+  }
+
   // Initialize canvas dimensions first (without calling resize to avoid TDZ issues)
   const initialDpr = Math.max(1, window.devicePixelRatio || 1);
   const initialVw = Math.round(window.visualViewport?.width || window.innerWidth);
@@ -254,15 +264,35 @@ try {
   canvas.width = Math.floor(initialVw * initialDpr);
   canvas.height = Math.floor(initialVh * initialDpr);
 
-  // Ball state
-  const ball = {
-    x: logicalWidth / 2,
-    y: logicalHeight / 2,
-    vx: Math.random() * 4 - 2,
-    vy: Math.random() * 4 - 2,
-    radius: 80,
-    color: randomColor(),
-  };
+  // Create multiple balls with non-overlapping positions
+  const balls = [];
+  const NUM_BALLS = 5;
+  const BALL_RADIUS = 50;
+
+  for (let i = 0; i < NUM_BALLS; i++) {
+    let attempts = 0;
+    let newBall;
+
+    // Try to find a non-overlapping position
+    do {
+      newBall = {
+        x: BALL_RADIUS + Math.random() * (logicalWidth - 2 * BALL_RADIUS),
+        y: BALL_RADIUS + Math.random() * (logicalHeight - 2 * BALL_RADIUS),
+        vx: Math.random() * 4 - 2,
+        vy: Math.random() * 4 - 2,
+        radius: BALL_RADIUS,
+        color: randomColor(),
+      };
+      attempts++;
+    } while (balls.some(ball => ballsOverlap(newBall, ball)) && attempts < 100);
+
+    // Only add if we found a valid position
+    if (attempts < 100) {
+      balls.push(newBall);
+    }
+  }
+
+  console.log(`Created ${balls.length} balls`);
 
   // Now safe to call resize (after all variables are initialized)
   ctx.setTransform(initialDpr, 0, 0, initialDpr, 0, 0);
@@ -273,43 +303,51 @@ try {
   const BOUNCE_DAMPING = 0.85;
 
   function updatePhysics() {
-    ball.vy += GRAVITY;
-    ball.vx *= FRICTION;
-    ball.vy *= FRICTION;
-    ball.x += ball.vx;
-    ball.y += ball.vy;
+    balls.forEach(ball => {
+      ball.vy += GRAVITY;
+      ball.vx *= FRICTION;
+      ball.vy *= FRICTION;
+      ball.x += ball.vx;
+      ball.y += ball.vy;
 
-    if (ball.x - ball.radius < 0) {
-      ball.x = ball.radius;
-      ball.vx = Math.abs(ball.vx) * BOUNCE_DAMPING;
-    }
-    if (ball.x + ball.radius > logicalWidth) {
-      ball.x = logicalWidth - ball.radius;
-      ball.vx = -Math.abs(ball.vx) * BOUNCE_DAMPING;
-    }
-    if (ball.y - ball.radius < 0) {
-      ball.y = ball.radius;
-      ball.vy = Math.abs(ball.vy) * BOUNCE_DAMPING;
-    }
-    if (ball.y + ball.radius > logicalHeight) {
-      ball.y = logicalHeight - ball.radius;
-      ball.vy = -Math.abs(ball.vy) * BOUNCE_DAMPING;
-      if (Math.abs(ball.vy) < 0.5) ball.vy = 0;
-    }
+      // Wall collisions
+      if (ball.x - ball.radius < 0) {
+        ball.x = ball.radius;
+        ball.vx = Math.abs(ball.vx) * BOUNCE_DAMPING;
+      }
+      if (ball.x + ball.radius > logicalWidth) {
+        ball.x = logicalWidth - ball.radius;
+        ball.vx = -Math.abs(ball.vx) * BOUNCE_DAMPING;
+      }
+      if (ball.y - ball.radius < 0) {
+        ball.y = ball.radius;
+        ball.vy = Math.abs(ball.vy) * BOUNCE_DAMPING;
+      }
+      if (ball.y + ball.radius > logicalHeight) {
+        ball.y = logicalHeight - ball.radius;
+        ball.vy = -Math.abs(ball.vy) * BOUNCE_DAMPING;
+        if (Math.abs(ball.vy) < 0.5) ball.vy = 0;
+      }
+    });
   }
 
   function draw() {
     ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     updatePhysics();
-    ctx.fillStyle = ball.color;
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-    ctx.fill();
+
+    // Draw all balls
+    balls.forEach(ball => {
+      ctx.fillStyle = ball.color;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
     requestAnimationFrame(draw);
   }
   draw();
 
-  console.log('Physics engine initialized. Ball will bounce with gravity!');
+  console.log(`Physics engine initialized. ${balls.length} balls will bounce with gravity!`);
 
   // Button logic
   const button = document.createElement('button');
@@ -329,9 +367,12 @@ try {
     touchAction: 'manipulation',
   });
   button.addEventListener('click', () => {
-    ball.color = randomColor();
-    ball.vy -= 5;
-    console.log('Ball color changed and kicked!');
+    if (balls.length > 0) {
+      const randomBall = balls[Math.floor(Math.random() * balls.length)];
+      randomBall.color = randomColor();
+      randomBall.vy -= 5;
+      console.log('Random ball color changed and kicked!');
+    }
   });
   document.body.appendChild(button);
 
