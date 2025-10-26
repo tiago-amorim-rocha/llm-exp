@@ -513,11 +513,11 @@ try {
 
   // Create engine
   const engine = Engine.create({
-    gravity: { x: 0, y: 0.3 }
+    gravity: { x: 0, y: 0.5 }
   });
 
   // Physics constants (editable via debug console)
-  let GRAVITY = 0.3;
+  let GRAVITY = 0.5;
   let FRICTION = 0.01;
   let BOUNCE = 0.9;
 
@@ -542,7 +542,8 @@ try {
   let lastSpawnTime = 0;
   const SPAWN_DELAY = 50; // ms between spawn attempts (3x faster)
   const SPAWN_RETRY_DELAY = 17; // ms to wait before retrying if collision detected (3x faster)
-  const SPAWN_ZONE_HEIGHT = 200; // Height above screen to spawn balls
+  const SPAWN_ZONE_HEIGHT = 100; // Height above screen to spawn balls (reduced for faster appearance)
+  const INITIAL_DROP_VELOCITY = 3; // Initial downward velocity
   let isRetrying = false;
 
   // Check if a position would collide with existing balls
@@ -604,7 +605,7 @@ try {
       x: spawnX,
       y: spawnY,
       vx: 0,
-      vy: 0,
+      vy: INITIAL_DROP_VELOCITY,
       radius: data.radius,
       color: data.color,
       letter: data.letter,
@@ -617,6 +618,9 @@ try {
       density: 0.001,
       frictionAir: 0.005
     });
+
+    // Set initial downward velocity
+    Body.setVelocity(newBall.body, { x: 0, y: INITIAL_DROP_VELOCITY });
 
     newBall.body.ballData = newBall;
     World.add(engine.world, newBall.body);
