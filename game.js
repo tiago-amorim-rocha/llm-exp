@@ -8,12 +8,30 @@ const ctx = canvas.getContext('2d');
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+
+  // Keep ball within bounds after resize
+  if (ball) {
+    ball.x = Math.min(Math.max(ball.x, ball.radius), canvas.width - ball.radius);
+    ball.y = Math.min(Math.max(ball.y, ball.radius), canvas.height - ball.radius);
+  }
 }
 window.addEventListener('resize', resize);
 resize();
 
-// Circle state
-let circleColor = randomColor();
+// Ball state
+const ball = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  vx: Math.random() * 4 - 2,  // Random initial velocity -2 to 2
+  vy: Math.random() * 4 - 2,
+  radius: 80,
+  color: randomColor(),
+};
+
+// Physics constants
+const GRAVITY = 0.3;
+const FRICTION = 0.99;
+const BOUNCE_DAMPING = 0.85;
 
 // Utility: random bright color
 function randomColor() {
@@ -21,17 +39,68 @@ function randomColor() {
   return `hsl(${hue}, 80%, 60%)`;
 }
 
+// Physics update
+function updatePhysics() {
+  // Apply gravity
+  ball.vy += GRAVITY;
+
+  // Apply friction
+  ball.vx *= FRICTION;
+  ball.vy *= FRICTION;
+
+  // Update position
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+
+  // Wall collision detection and bouncing
+  // Left wall
+  if (ball.x - ball.radius < 0) {
+    ball.x = ball.radius;
+    ball.vx = Math.abs(ball.vx) * BOUNCE_DAMPING;
+  }
+
+  // Right wall
+  if (ball.x + ball.radius > canvas.width) {
+    ball.x = canvas.width - ball.radius;
+    ball.vx = -Math.abs(ball.vx) * BOUNCE_DAMPING;
+  }
+
+  // Top wall
+  if (ball.y - ball.radius < 0) {
+    ball.y = ball.radius;
+    ball.vy = Math.abs(ball.vy) * BOUNCE_DAMPING;
+  }
+
+  // Bottom wall
+  if (ball.y + ball.radius > canvas.height) {
+    ball.y = canvas.height - ball.radius;
+    ball.vy = -Math.abs(ball.vy) * BOUNCE_DAMPING;
+
+    // Stop very small bounces (ball at rest)
+    if (Math.abs(ball.vy) < 0.5) {
+      ball.vy = 0;
+    }
+  }
+}
+
 // Draw function
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = circleColor;
-  const r = 80;
+
+  // Update physics
+  updatePhysics();
+
+  // Draw ball
+  ctx.fillStyle = ball.color;
   ctx.beginPath();
-  ctx.arc(canvas.width / 2, canvas.height / 2, r, 0, Math.PI * 2);
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
   ctx.fill();
+
   requestAnimationFrame(draw);
 }
 draw();
+
+console.log('Physics engine initialized. Ball will bounce with gravity!');
 
 // Button logic
 const button = document.createElement('button');
@@ -50,7 +119,10 @@ Object.assign(button.style, {
   cursor: 'pointer',
 });
 button.addEventListener('click', () => {
-  circleColor = randomColor();
+  ball.color = randomColor();
+  // Give the ball a little kick upward when color changes
+  ball.vy -= 5;
+  console.log('Ball color changed and kicked!');
 });
 document.body.appendChild(button);
 
