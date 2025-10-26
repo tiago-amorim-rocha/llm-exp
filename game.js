@@ -221,4 +221,20 @@ try {
     left: '50%',
     bottom: '40px',
     transform: 'translateX(-50%)',
-    font: '16px system-ui
+    font: '16px system-ui, -apple-system, sans-serif',
+    padding: '10px 20px',
+    borderRadius: '8px',
+    border: 'none',
+    background: '#FFFF00',
+    color: 'brown',
+    cursor: 'pointer',
+  });
+  button.addEventListener('click', () => {
+    ball.color = randomColor();
+    ball.vy -= 5;
+    console.log('Ball color changed and kicked!');
+  });
+  document.body.appendChild(button);
+} catch (e) {
+  console.error('Top-level error caught:', e);
+}
