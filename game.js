@@ -141,11 +141,19 @@ try {
 
   // Resize canvas
   function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const vw = Math.round(window.visualViewport?.width || window.innerWidth);
+    const vh = Math.round(window.visualViewport?.height || window.innerHeight);
+
+    canvas.style.width = vw + 'px';
+    canvas.style.height = vh + 'px';
+    canvas.width = Math.floor(vw * dpr);
+    canvas.height = Math.floor(vh * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
     if (typeof ball !== 'undefined') {
-      ball.x = Math.min(Math.max(ball.x, ball.radius), canvas.width - ball.radius);
-      ball.y = Math.min(Math.max(ball.y, ball.radius), canvas.height - ball.radius);
+      ball.x = Math.min(Math.max(ball.x, ball.radius), canvas.width / dpr - ball.radius);
+      ball.y = Math.min(Math.max(ball.y, ball.radius), canvas.height / dpr - ball.radius);
     }
   }
   window.addEventListener('resize', resize);
@@ -219,7 +227,7 @@ try {
   Object.assign(button.style, {
     position: 'fixed',
     left: '50%',
-    bottom: '40px',
+    bottom: 'calc(40px + env(safe-area-inset-bottom, 0px))',
     transform: 'translateX(-50%)',
     font: '16px system-ui, -apple-system, sans-serif',
     padding: '10px 20px',
