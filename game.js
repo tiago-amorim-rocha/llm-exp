@@ -350,14 +350,14 @@ try {
     return { letter, frequency: LETTER_FREQUENCY[letter] };
   }
 
-  // Calculate ball radius based on letter frequency (less frequent = bigger)
+  // Calculate ball radius based on letter frequency (more frequent = bigger)
   function getRadiusForFrequency(frequency) {
-    // Min radius for most frequent letters (E: 12.70%), Max for least frequent (Z: 0.07%)
+    // Min radius for least frequent letters (Z: 0.07%), Max for most frequent (E: 12.70%)
     const MIN_RADIUS = 30;
-    const MAX_RADIUS = 60;
-    // Inverse relationship: lower frequency = larger radius
+    const MAX_RADIUS = 45; // 1.5x larger for frequent letters
+    // Direct relationship: higher frequency = larger radius
     const normalizedFrequency = (frequency - 0.07) / (12.70 - 0.07);
-    return MAX_RADIUS - (normalizedFrequency * (MAX_RADIUS - MIN_RADIUS));
+    return MIN_RADIUS + (normalizedFrequency * (MAX_RADIUS - MIN_RADIUS));
   }
 
   // Check if two balls overlap
@@ -381,7 +381,7 @@ try {
   // Create multiple balls with non-overlapping positions
   const balls = [];
   const NUM_BALLS = 30;
-  const MAX_BALL_RADIUS = 60; // Used for boundary calculations
+  const MAX_BALL_RADIUS = 45; // Used for boundary calculations
 
   for (let i = 0; i < NUM_BALLS; i++) {
     let attempts = 0;
