@@ -82,6 +82,17 @@ function loop() {
   // draw all bodies
   for (const b of world.bodies) drawBody(b);
 
+  // draw Hello World text in center
+  const w = canvas.width / (window.devicePixelRatio || 1);
+  const h = canvas.height / (window.devicePixelRatio || 1);
+  ctx.save();
+  ctx.fillStyle = '#ffff00';
+  ctx.font = '48px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Hello World', w / 2, h / 2);
+  ctx.restore();
+
   requestAnimationFrame(loop);
 }
 loop();
