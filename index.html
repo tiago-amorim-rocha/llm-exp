@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <link rel="icon" href="icons/icon-512.png" type="image/png">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 
@@ -37,7 +36,8 @@
 
 <body>
   <canvas id="game"></canvas>
-  <!-- Auto-versioned module loader -->
+
+  <!-- Auto-versioned module loader (with silent fallback) -->
   <script>
   (async () => {
     try {
@@ -46,12 +46,14 @@
       window.__BUILD = v;
       const s = document.createElement('script');
       s.type = 'module';
-      s.src  = `./game.js?v=${encodeURIComponent(v)}`;
+      s.src = `./game.js?v=${encodeURIComponent(v)}`;
       document.head.appendChild(s);
-    } catch {
+    } catch (err) {
+      // Silent fallback if version.txt is missing
+      console.warn('version.txt missing, using fallback timestamp');
       const s = document.createElement('script');
       s.type = 'module';
-      s.src  = `./game.js?v=${Date.now()}`;
+      s.src = `./game.js?v=${Date.now()}`;
       document.head.appendChild(s);
     }
   })();
