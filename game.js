@@ -145,22 +145,32 @@ try {
 
   // Resize canvas
   function resize() {
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-    const vw = Math.round(window.visualViewport?.width || window.innerWidth);
-    const vh = Math.round(window.visualViewport?.height || window.innerHeight);
+    try {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const vw = Math.round(window.visualViewport?.width || window.innerWidth);
+      const vh = Math.round(window.visualViewport?.height || window.innerHeight);
 
-    logicalWidth = vw;
-    logicalHeight = vh;
+      // Ensure valid dimensions
+      if (!vw || !vh || vw <= 0 || vh <= 0) {
+        console.warn('Invalid viewport dimensions:', vw, vh);
+        return;
+      }
 
-    canvas.style.width = vw + 'px';
-    canvas.style.height = vh + 'px';
-    canvas.width = Math.floor(vw * dpr);
-    canvas.height = Math.floor(vh * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      logicalWidth = vw;
+      logicalHeight = vh;
 
-    if (typeof ball !== 'undefined') {
-      ball.x = Math.min(Math.max(ball.x, ball.radius), logicalWidth - ball.radius);
-      ball.y = Math.min(Math.max(ball.y, ball.radius), logicalHeight - ball.radius);
+      canvas.style.width = vw + 'px';
+      canvas.style.height = vh + 'px';
+      canvas.width = Math.floor(vw * dpr);
+      canvas.height = Math.floor(vh * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if (typeof ball !== 'undefined') {
+        ball.x = Math.min(Math.max(ball.x, ball.radius), logicalWidth - ball.radius);
+        ball.y = Math.min(Math.max(ball.y, ball.radius), logicalHeight - ball.radius);
+      }
+    } catch (err) {
+      console.error('Resize error:', err);
     }
   }
   window.addEventListener('resize', resize);
@@ -259,4 +269,7 @@ try {
   document.body.appendChild(button);
 } catch (e) {
   console.error('Top-level error caught:', e);
+  console.error('Error message:', e?.message);
+  console.error('Error stack:', e?.stack);
+  console.error('Error type:', e?.constructor?.name);
 }
