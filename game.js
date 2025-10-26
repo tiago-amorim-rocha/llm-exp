@@ -473,13 +473,13 @@ try {
   canvas.width = Math.floor(initialVw * initialDpr);
   canvas.height = Math.floor(initialVh * initialDpr);
 
-  // Create multiple balls with grid-based placement (smarter algorithm)
+  // Ball spawning system - balls drop from above the screen
   const balls = [];
   const NUM_BALLS = 40;
   const MAX_BALL_RADIUS = 45; // Used for boundary calculations
 
-  // First, draw all letters and create ball data (unsorted)
-  const ballData = [];
+  // Prepare all ball data to spawn
+  const ballsToSpawn = [];
   for (let i = 0; i < NUM_BALLS; i++) {
     const letter = letterBag.draw();
     if (!letter) {
@@ -490,7 +490,7 @@ try {
     const frequency = LETTER_FREQUENCY[letter];
     const radius = getRadiusForFrequency(frequency);
 
-    ballData.push({
+    ballsToSpawn.push({
       letter: letter,
       frequency: frequency,
       radius: radius,
@@ -498,79 +498,7 @@ try {
     });
   }
 
-  // Sort by radius (largest first) - ensures big balls get placed when more space available
-  ballData.sort((a, b) => b.radius - a.radius);
-
-  // Grid-based placement with randomization
-  // Calculate grid dimensions based on average ball size
-  const avgRadius = ballData.reduce((sum, b) => sum + b.radius, 0) / ballData.length;
-  const cellSize = avgRadius * 2.5; // Space between ball centers
-  const cols = Math.floor(logicalWidth / cellSize);
-  const rows = Math.floor(logicalHeight / cellSize);
-  const totalCells = cols * rows;
-
-  // Offset to center the grid
-  const offsetX = (logicalWidth - (cols - 1) * cellSize) / 2;
-  const offsetY = (logicalHeight - (rows - 1) * cellSize) / 2;
-
-  // Create shuffled cell indices
-  const cellIndices = [];
-  for (let i = 0; i < totalCells; i++) {
-    cellIndices.push(i);
-  }
-  // Shuffle cell indices for random placement order
-  for (let i = cellIndices.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [cellIndices[i], cellIndices[j]] = [cellIndices[j], cellIndices[i]];
-  }
-
-  // Place each ball in a grid cell with jitter
-  ballData.forEach((data, index) => {
-    if (index >= totalCells) {
-      // More balls than grid cells - return to bag
-      letterBag.return(data.letter);
-      console.warn(`Not enough grid space for ball with letter ${data.letter}`);
-      return;
-    }
-
-    const cellIndex = cellIndices[index];
-    const col = cellIndex % cols;
-    const row = Math.floor(cellIndex / cols);
-
-    // Base position at grid cell center
-    const baseX = offsetX + col * cellSize;
-    const baseY = offsetY + row * cellSize;
-
-    // Add jitter (random offset within cell, but keep ball fully inside bounds)
-    const jitterAmount = cellSize * 0.3; // 30% jitter
-    const jitterX = (Math.random() - 0.5) * jitterAmount;
-    const jitterY = (Math.random() - 0.5) * jitterAmount;
-
-    const x = Math.max(data.radius, Math.min(logicalWidth - data.radius, baseX + jitterX));
-    const y = Math.max(data.radius, Math.min(logicalHeight - data.radius, baseY + jitterY));
-
-    balls.push({
-      x: x,
-      y: y,
-      vx: Math.random() * 4 - 2,
-      vy: Math.random() * 4 - 2,
-      radius: data.radius,
-      color: data.color,
-      letter: data.letter,
-    });
-  });
-
-  const bagState = letterBag.getState();
-  console.log(`Created ${balls.length} balls | Bag: ${bagState.available} available, ${bagState.inPlay} in play, ${bagState.total} total`);
-
-  // Log letter distribution for debugging
-  const letterCounts = {};
-  balls.forEach(ball => {
-    letterCounts[ball.letter] = (letterCounts[ball.letter] || 0) + 1;
-  });
-  const vowelCount = balls.filter(b => 'AEIOU'.includes(b.letter)).length;
-  console.log('Letter distribution:', Object.entries(letterCounts).sort().map(([l, c]) => `${l}:${c}`).join(' '));
-  console.log(`Vowels: ${vowelCount}/${balls.length} (${Math.round(vowelCount/balls.length*100)}%)`);
+  console.log(`Prepared ${ballsToSpawn.length} balls to spawn`);
 
   // Now safe to call resize (after all variables are initialized)
   ctx.setTransform(initialDpr, 0, 0, initialDpr, 0, 0);
@@ -593,27 +521,7 @@ try {
   let FRICTION = 0.01;
   let BOUNCE = 0.9;
 
-  // Create Matter.js bodies for each ball
-  balls.forEach((ball, index) => {
-    // Create circular body
-    ball.body = Bodies.circle(ball.x, ball.y, ball.radius, {
-      restitution: BOUNCE,
-      friction: FRICTION,
-      density: 0.001,
-      frictionAir: 0.005
-    });
-
-    // Set initial velocity
-    Body.setVelocity(ball.body, { x: ball.vx, y: ball.vy });
-
-    // Store reference to ball data
-    ball.body.ballData = ball;
-
-    // Add to world
-    World.add(engine.world, ball.body);
-  });
-
-  // Create walls
+  // Create walls (NO TOP WALL - balls spawn from above)
   const wallOptions = {
     isStatic: true,
     restitution: BOUNCE,
@@ -621,13 +529,107 @@ try {
   };
 
   const walls = [
-    Bodies.rectangle(logicalWidth / 2, -25, logicalWidth, 50, wallOptions), // Top
+    // Top wall removed - balls drop from above!
     Bodies.rectangle(logicalWidth / 2, logicalHeight + 25, logicalWidth, 50, wallOptions), // Bottom
     Bodies.rectangle(-25, logicalHeight / 2, 50, logicalHeight, wallOptions), // Left
     Bodies.rectangle(logicalWidth + 25, logicalHeight / 2, 50, logicalHeight, wallOptions) // Right
   ];
 
   World.add(engine.world, walls);
+
+  // Ball spawning system - spawn balls one at a time from above
+  let spawnIndex = 0;
+  let lastSpawnTime = 0;
+  const SPAWN_DELAY = 150; // ms between spawn attempts
+  const SPAWN_RETRY_DELAY = 50; // ms to wait before retrying if collision detected
+  const SPAWN_ZONE_HEIGHT = 200; // Height above screen to spawn balls
+  let isRetrying = false;
+
+  // Check if a position would collide with existing balls
+  function wouldCollide(x, y, radius) {
+    for (const ball of balls) {
+      const dx = x - ball.x;
+      const dy = y - ball.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance < radius + ball.radius) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Spawn the next ball
+  function spawnNextBall() {
+    if (spawnIndex >= ballsToSpawn.length) {
+      // All balls spawned - log final state
+      if (spawnIndex === ballsToSpawn.length) {
+        const bagState = letterBag.getState();
+        console.log(`All ${balls.length} balls spawned! | Bag: ${bagState.available} available, ${bagState.inPlay} in play, ${bagState.total} total`);
+
+        // Log letter distribution
+        const letterCounts = {};
+        balls.forEach(ball => {
+          letterCounts[ball.letter] = (letterCounts[ball.letter] || 0) + 1;
+        });
+        const vowelCount = balls.filter(b => 'AEIOU'.includes(b.letter)).length;
+        console.log('Letter distribution:', Object.entries(letterCounts).sort().map(([l, c]) => `${l}:${c}`).join(' '));
+        console.log(`Vowels: ${vowelCount}/${balls.length} (${Math.round(vowelCount/balls.length*100)}%)`);
+
+        spawnIndex++; // Prevent logging multiple times
+      }
+      return;
+    }
+
+    const data = ballsToSpawn[spawnIndex];
+
+    // Spawn position: random x, above screen
+    const spawnX = data.radius + Math.random() * (logicalWidth - 2 * data.radius);
+    const spawnY = -SPAWN_ZONE_HEIGHT + Math.random() * SPAWN_ZONE_HEIGHT;
+
+    // Check for collision
+    if (wouldCollide(spawnX, spawnY, data.radius)) {
+      // Collision detected - retry after short delay
+      if (!isRetrying) {
+        isRetrying = true;
+      }
+      setTimeout(() => {
+        isRetrying = false;
+        spawnNextBall();
+      }, SPAWN_RETRY_DELAY);
+      return;
+    }
+
+    // No collision - create and add ball
+    const newBall = {
+      x: spawnX,
+      y: spawnY,
+      vx: 0,
+      vy: 0,
+      radius: data.radius,
+      color: data.color,
+      letter: data.letter,
+    };
+
+    // Create Matter.js body
+    newBall.body = Bodies.circle(newBall.x, newBall.y, newBall.radius, {
+      restitution: BOUNCE,
+      friction: FRICTION,
+      density: 0.001,
+      frictionAir: 0.005
+    });
+
+    newBall.body.ballData = newBall;
+    World.add(engine.world, newBall.body);
+
+    balls.push(newBall);
+    spawnIndex++;
+
+    // Schedule next spawn
+    setTimeout(spawnNextBall, SPAWN_DELAY);
+  }
+
+  // Start spawning after a short delay
+  setTimeout(spawnNextBall, 500);
 
   // Expose physics constants to debug console
   window.gamePhysics = {
@@ -687,7 +689,7 @@ try {
   }
   draw();
 
-  console.log(`Matter.js physics engine initialized. ${balls.length} balls ready!`);
+  console.log(`Matter.js physics engine initialized. Spawning ${ballsToSpawn.length} balls...`);
 
   console.log('Game initialized successfully!');
 } catch (e) {
