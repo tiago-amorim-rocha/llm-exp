@@ -281,38 +281,21 @@ try {
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
 
-  // Logical dimensions (updated by resize)
-  let logicalWidth = window.innerWidth;
-  let logicalHeight = window.innerHeight;
+  // Logical dimensions (fixed at startup - portrait only game)
+  const logicalWidth = window.innerWidth;
+  const logicalHeight = window.innerHeight;
 
-  // Track layout viewport to detect actual rotations vs keyboard
-  let lastLayoutWidth = window.innerWidth;
-  let lastLayoutHeight = window.innerHeight;
-
-  // Resize canvas
+  // Resize canvas (visual only - game world dimensions never change)
   function resize() {
     try {
       const dpr = Math.max(1, window.devicePixelRatio || 1);
       const vw = Math.round(window.visualViewport?.width || window.innerWidth);
       const vh = Math.round(window.visualViewport?.height || window.innerHeight);
 
-      // Check if layout viewport changed (rotation) or just visual viewport (keyboard)
-      const layoutWidth = window.innerWidth;
-      const layoutHeight = window.innerHeight;
-      const isLayoutChange = (layoutWidth !== lastLayoutWidth || layoutHeight !== lastLayoutHeight);
-
       // Ensure valid dimensions
       if (!vw || !vh || vw <= 0 || vh <= 0) {
         console.warn('Invalid viewport dimensions:', vw, vh);
         return;
-      }
-
-      // Only update logical dimensions on actual layout changes (not keyboard)
-      if (isLayoutChange) {
-        logicalWidth = layoutWidth;
-        logicalHeight = layoutHeight;
-        lastLayoutWidth = layoutWidth;
-        lastLayoutHeight = layoutHeight;
       }
 
       canvas.style.width = vw + 'px';
@@ -330,13 +313,7 @@ try {
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Only reposition balls on actual layout changes (rotation), not keyboard
-      if (isLayoutChange && typeof balls !== 'undefined') {
-        balls.forEach(ball => {
-          ball.x = Math.min(Math.max(ball.x, ball.radius), logicalWidth - ball.radius);
-          ball.y = Math.min(Math.max(ball.y, ball.radius), logicalHeight - ball.radius);
-        });
-      }
+      // Never reposition balls - game world is fixed
     } catch (err) {
       console.error('Resize error:', err?.message || String(err));
       if (err?.stack) console.error(err.stack);
