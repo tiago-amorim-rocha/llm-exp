@@ -10,7 +10,7 @@ function resize() {
   canvas.height = window.innerHeight;
 
   // Keep ball within bounds after resize
-  if (ball) {
+  if (typeof ball !== 'undefined') {
     ball.x = Math.min(Math.max(ball.x, ball.radius), canvas.width - ball.radius);
     ball.y = Math.min(Math.max(ball.y, ball.radius), canvas.height - ball.radius);
   }
