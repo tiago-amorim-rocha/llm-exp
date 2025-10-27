@@ -27,15 +27,6 @@ export const SPAWN = {
   INITIAL_VELOCITY: 3     // Initial downward velocity
 };
 
-// ========== Letter Frequency (English) ==========
-export const LETTER_FREQUENCY = {
-  'E': 12.70, 'T': 9.06, 'A': 8.17, 'O': 7.51, 'I': 6.97, 'N': 6.75,
-  'S': 6.33, 'H': 6.09, 'R': 5.99, 'D': 4.25, 'L': 4.03, 'C': 2.78,
-  'U': 2.76, 'M': 2.41, 'W': 2.36, 'F': 2.23, 'G': 2.02, 'Y': 1.97,
-  'P': 1.93, 'B': 1.29, 'V': 0.98, 'K': 0.77, 'J': 0.15, 'X': 0.15,
-  'Q': 0.10, 'Z': 0.07
-};
-
 // ========== Letter Bag Distribution (Scrabble-like, 100 total) ==========
 export const LETTER_BAG_DISTRIBUTION = {
   // Vowels - 42 total (42%)
@@ -57,8 +48,11 @@ export function getColorForLetter(letter) {
   return `hsl(${hue}, 75%, 60%)`;
 }
 
-// Calculate ball radius based on letter frequency
-export function getRadiusForFrequency(frequency) {
-  const normalizedFrequency = (frequency - 0.07) / (12.70 - 0.07);
-  return BALL.MIN_RADIUS + (normalizedFrequency * (BALL.MAX_RADIUS - BALL.MIN_RADIUS));
+// Calculate ball radius based on letter bag count (more in bag = bigger ball)
+export function getRadiusForLetter(letter) {
+  const bagCount = LETTER_BAG_DISTRIBUTION[letter];
+  const minCount = 1;  // Minimum bag count (Q, K, J, X)
+  const maxCount = 12; // Maximum bag count (E)
+  const normalizedCount = (bagCount - minCount) / (maxCount - minCount);
+  return BALL.MIN_RADIUS + (normalizedCount * (BALL.MAX_RADIUS - BALL.MIN_RADIUS));
 }
