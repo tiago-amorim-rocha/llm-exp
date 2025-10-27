@@ -19,6 +19,28 @@ try {
   const logicalWidth = Math.round(window.visualViewport?.width || window.innerWidth);
   const logicalHeight = Math.round(window.visualViewport?.height || window.innerHeight);
 
+  // Detect safe area insets (for iOS notch/Dynamic Island)
+  function getSafeAreaTop() {
+    // Try to get CSS env variable for safe-area-inset-top
+    const testDiv = document.createElement('div');
+    testDiv.style.cssText = 'position:fixed;top:env(safe-area-inset-top);pointer-events:none;';
+    document.body.appendChild(testDiv);
+    const inset = parseInt(getComputedStyle(testDiv).top) || 0;
+    document.body.removeChild(testDiv);
+
+    // If no inset detected, check if this looks like an iPhone with notch
+    // (safe area needed but env() not supported/working)
+    if (inset === 0 && /iPhone/.test(navigator.userAgent)) {
+      // Default safe offset for iPhones with notches (44-59px typical)
+      return 60;
+    }
+
+    return inset;
+  }
+
+  const safeAreaTop = getSafeAreaTop();
+  console.log(`Safe area top inset: ${safeAreaTop}px`);
+
   // Resize canvas (visual only - game world dimensions never change)
   function resize() {
     try {
@@ -303,7 +325,7 @@ try {
         const boxWidth = textWidth + padding * 2;
         const boxHeight = 40;
         const boxX = logicalWidth / 2 - boxWidth / 2;
-        const boxY = 20;
+        const boxY = safeAreaTop + 10; // Safe area top + 10px padding
 
         // Background box
         ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
