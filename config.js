@@ -25,8 +25,8 @@ export const SPAWN = {
   RETRY_DELAY: 17,        // ms to wait if collision detected
   ZONE_HEIGHT: 100,       // Height above screen to spawn
   INITIAL_VELOCITY: 3,    // Initial downward velocity
-  INTERVAL: 5000,         // ms between automatic spawns (survival mode)
-  BATCH_SIZE: 4           // Number of balls to spawn per interval
+  INTERVAL: 10000,        // ms between automatic spawns (survival mode)
+  BATCH_SIZE: 5           // Number of balls to spawn per interval
 };
 
 // ========== Selection ==========
