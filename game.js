@@ -2,7 +2,7 @@
 
 import { initDebugConsole } from './debugConsole.js';
 import { letterBag } from './letterBag.js';
-import { PHYSICS, BALL, SPAWN, LETTER_FREQUENCY, getColorForLetter, getRadiusForFrequency } from './config.js';
+import { PHYSICS, BALL, SPAWN, getColorForLetter, getRadiusForLetter } from './config.js';
 import { engine, createWalls, createBallBody, createPhysicsInterface, updatePhysics, addToWorld } from './physics.js';
 
 // Initialize debug console first
@@ -87,12 +87,10 @@ try {
       break;
     }
 
-    const frequency = LETTER_FREQUENCY[letter];
-    const radius = getRadiusForFrequency(frequency);
+    const radius = getRadiusForLetter(letter);
 
     ballsToSpawn.push({
       letter: letter,
-      frequency: frequency,
       radius: radius,
       color: getColorForLetter(letter)
     });

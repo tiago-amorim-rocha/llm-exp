@@ -29,9 +29,10 @@ index.html          - Entry point, loads game.js as ES6 module
 - Mass scales with ball size (density ∝ radius)
 
 ### Ball Properties
-- Radius: 30-45px (based on letter frequency: E=largest, Z=smallest)
+- Radius: 30-45px (based on bag count: E=12 largest, Q/K/J/X=1 smallest)
 - Color: Consistent per letter (HSL based on alphabet position)
 - Spawning: Drop from above, collision-checked, 50ms intervals
+- Size directly correlates with bag distribution (simpler, single source of truth)
 
 ### Debug Console
 - Toggle: Click 🐛 button (bottom-right)
@@ -39,9 +40,11 @@ index.html          - Entry point, loads game.js as ES6 module
 - Console output capture
 
 ## Recent Changes
+- Refactored into modular architecture (5 modules + main)
+- Removed LETTER_FREQUENCY - ball size now based on bag distribution only
 - Physics stability improvements (reduced jitter, better settling)
-- Mass now scales with ball size for realistic interactions
-- Gravity increased to 0.5, bounce balanced at 0.5
+- Mass scales with ball size for realistic interactions
+- Gravity at 1.0, bounce at 0.8
 
 ## How to Update This File
 **Update when:**
