@@ -50,11 +50,24 @@ export const LETTER_BAG_DISTRIBUTION = {
 
 // ========== Utilities ==========
 
-// Get consistent color for a letter (HSL based on alphabet position)
+// Get consistent color for a letter
+// Vowels use warm colors (red-orange-yellow), consonants use cool colors (blue-green-purple)
 export function getColorForLetter(letter) {
-  const charCode = letter.charCodeAt(0) - 65; // A=0, B=1, ..., Z=25
-  const hue = (charCode * 360 / 26) % 360;
-  return `hsl(${hue}, 75%, 60%)`;
+  const isVowel = 'AEIOU'.includes(letter);
+  const vowels = 'AEIOU';
+  const consonants = 'BCDFGHJKLMNPQRSTVWXYZ';
+
+  if (isVowel) {
+    // Warm colors: hue 0-60 (red to yellow)
+    const index = vowels.indexOf(letter);
+    const hue = (index / vowels.length) * 60; // 0-60 range
+    return `hsl(${hue}, 80%, 60%)`;
+  } else {
+    // Cool colors: hue 180-300 (cyan to purple)
+    const index = consonants.indexOf(letter);
+    const hue = 180 + (index / consonants.length) * 120; // 180-300 range
+    return `hsl(${hue}, 70%, 55%)`;
+  }
 }
 
 // Calculate ball radius based on letter bag count (more in bag = bigger ball)
