@@ -211,11 +211,13 @@ try {
         console.log('Letter distribution:', Object.entries(letterCounts).sort().map(([l, c]) => `${l}:${c}`).join(' '));
         console.log(`Vowels: ${vowelCount}/${balls.length} (${Math.round(vowelCount/balls.length*100)}%)`);
 
-        // Start continuous spawning (1 ball every 5 seconds)
-        console.log(`Starting continuous spawn: 1 ball every ${SPAWN.INTERVAL}ms`);
+        // Start continuous spawning (batch of balls every interval)
+        console.log(`Starting continuous spawn: ${SPAWN.BATCH_SIZE} balls every ${SPAWN.INTERVAL}ms`);
         continuousSpawnInterval = setInterval(() => {
           if (!isGameOver) {
-            spawnSingleBall();
+            for (let i = 0; i < SPAWN.BATCH_SIZE; i++) {
+              spawnSingleBall();
+            }
           }
         }, SPAWN.INTERVAL);
 
