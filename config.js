@@ -36,6 +36,18 @@ export const SELECTION = {
   STROKE_WIDTH: 4         // Width of highlight stroke
 };
 
+// ========== Score Display ==========
+export const SCORE = {
+  FONT_SIZE: 20,
+  FONT_SIZE_HIGH: 14,     // High score font size (smaller)
+  COLOR: '#333',
+  HIGH_SCORE_COLOR: '#666',
+  PADDING: 16,            // Padding from screen edge
+  ANIMATION_FONT_SIZE: 32,
+  ANIMATION_COLOR: '#4CAF50', // Green for points animation
+  ANIMATION_FONT_WEIGHT: 'bold'
+};
+
 // ========== Letter Bag Distribution (Optimized for word formation, 100 total) ==========
 export const LETTER_BAG_DISTRIBUTION = {
   // Vowels - 32 total (32%) - reduced from Scrabble's 42% for better word variety

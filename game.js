@@ -2,10 +2,11 @@
 
 import { initDebugConsole } from './debugConsole.js';
 import { letterBag } from './letterBag.js';
-import { PHYSICS, BALL, SPAWN, SELECTION, getColorForLetter, getRadiusForLetter } from './config.js';
+import { PHYSICS, BALL, SPAWN, SELECTION, SCORE, getColorForLetter, getRadiusForLetter } from './config.js';
 import { engine, createWalls, createBallBody, createPhysicsInterface, updatePhysics, addToWorld, removeFromWorld } from './physics.js';
 import { initSelection, handleTouchStart, handleTouchMove, handleTouchEnd, getSelection, getTouchPosition, isSelectionActive, getSelectedWord } from './selection.js';
 import { wordValidator } from './wordValidator.js';
+import { scoring } from './scoring.js';
 
 // Initialize debug console first
 initDebugConsole();
@@ -215,6 +216,16 @@ try {
   function processValidWord(selectedBalls, word) {
     console.log(`Valid word: "${word}" - removing ${selectedBalls.length} balls`);
 
+    // Calculate score and add points
+    const points = scoring.calculateScore(word);
+
+    // Calculate center position of selected balls for animation
+    const centerX = selectedBalls.reduce((sum, ball) => sum + ball.x, 0) / selectedBalls.length;
+    const centerY = selectedBalls.reduce((sum, ball) => sum + ball.y, 0) / selectedBalls.length;
+
+    scoring.addScore(points, centerX, centerY);
+    console.log(`+${points} points! Score: ${scoring.getScore()}`);
+
     // Remove balls from physics world and from balls array
     selectedBalls.forEach(ball => {
       // Remove from Matter.js world
@@ -411,6 +422,37 @@ try {
         ctx.fillText(word, logicalWidth / 2, boxY + 8);
       }
     }
+
+    // Update and render score animations
+    scoring.updateAnimations();
+    const animations = scoring.getAnimations();
+    animations.forEach(anim => {
+      ctx.save();
+      ctx.globalAlpha = anim.opacity;
+      ctx.font = `${SCORE.ANIMATION_FONT_WEIGHT} ${SCORE.ANIMATION_FONT_SIZE}px system-ui, -apple-system, sans-serif`;
+      ctx.fillStyle = SCORE.ANIMATION_COLOR;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`+${anim.points}`, anim.x, anim.y);
+      ctx.restore();
+    });
+
+    // Render score display (top-right corner)
+    const currentScore = scoring.getScore();
+    const highScore = scoring.getHighScore();
+
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+
+    // Current score
+    ctx.font = `bold ${SCORE.FONT_SIZE}px system-ui, -apple-system, sans-serif`;
+    ctx.fillStyle = SCORE.COLOR;
+    ctx.fillText(`Score: ${currentScore}`, logicalWidth - SCORE.PADDING, safeAreaTop + SCORE.PADDING);
+
+    // High score (below current score)
+    ctx.font = `${SCORE.FONT_SIZE_HIGH}px system-ui, -apple-system, sans-serif`;
+    ctx.fillStyle = SCORE.HIGH_SCORE_COLOR;
+    ctx.fillText(`Best: ${highScore}`, logicalWidth - SCORE.PADDING, safeAreaTop + SCORE.PADDING + SCORE.FONT_SIZE + 4);
 
     requestAnimationFrame(draw);
   }
