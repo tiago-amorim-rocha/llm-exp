@@ -1,6 +1,7 @@
 // debugConsole.js - Debug UI with physics controls and console logging
 
-import { PHYSICS } from './config.js';
+const v = window.__BUILD || Date.now();
+const { PHYSICS } = await import(`./config.js?v=${v}`);
 
 export function initDebugConsole() {
   const container = document.createElement('div');

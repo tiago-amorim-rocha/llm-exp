@@ -1,12 +1,22 @@
 // game.js - Main game logic, canvas, spawning, and rendering
 
-import { initDebugConsole } from './debugConsole.js';
-import { letterBag } from './letterBag.js';
-import { PHYSICS, BALL, SPAWN, SELECTION, SCORE, DANGER, getColorForLetter, getRadiusForLetter } from './config.js';
-import { engine, createWalls, createBallBody, createPhysicsInterface, updatePhysics, addToWorld, removeFromWorld } from './physics.js';
-import { initSelection, handleTouchStart, handleTouchMove, handleTouchEnd, getSelection, getTouchPosition, isSelectionActive, getSelectedWord } from './selection.js';
-import { wordValidator } from './wordValidator.js';
-import { scoring } from './scoring.js';
+// Version-aware imports for cache busting
+const v = window.__BUILD || Date.now();
+const debugConsoleModule = await import(`./debugConsole.js?v=${v}`);
+const letterBagModule = await import(`./letterBag.js?v=${v}`);
+const configModule = await import(`./config.js?v=${v}`);
+const physicsModule = await import(`./physics.js?v=${v}`);
+const selectionModule = await import(`./selection.js?v=${v}`);
+const wordValidatorModule = await import(`./wordValidator.js?v=${v}`);
+const scoringModule = await import(`./scoring.js?v=${v}`);
+
+const { initDebugConsole } = debugConsoleModule;
+const { letterBag } = letterBagModule;
+const { PHYSICS, BALL, SPAWN, SELECTION, SCORE, DANGER, getColorForLetter, getRadiusForLetter } = configModule;
+const { engine, createWalls, createBallBody, createPhysicsInterface, updatePhysics, addToWorld, removeFromWorld } = physicsModule;
+const { initSelection, handleTouchStart, handleTouchMove, handleTouchEnd, getSelection, getTouchPosition, isSelectionActive, getSelectedWord } = selectionModule;
+const { wordValidator } = wordValidatorModule;
+const { scoring } = scoringModule;
 
 // Initialize debug console first
 initDebugConsole();
