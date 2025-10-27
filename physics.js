@@ -85,3 +85,8 @@ export function updatePhysics(delta = 1000 / 60) {
 export function addToWorld(body) {
   World.add(engine.world, body);
 }
+
+// Remove body from world
+export function removeFromWorld(body) {
+  World.remove(engine.world, body);
+}
