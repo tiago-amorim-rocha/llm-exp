@@ -27,6 +27,15 @@ export const SPAWN = {
   INITIAL_VELOCITY: 3     // Initial downward velocity
 };
 
+// ========== Selection ==========
+export const SELECTION = {
+  MAX_DISTANCE: 187.5,    // Max distance between balls (2.5 × avg diameter)
+  HIGHLIGHT_COLOR: '#FFD700', // Gold color for selected balls
+  LINE_COLOR: '#FFD700',  // Color for connecting lines
+  LINE_WIDTH: 3,          // Width of connecting lines
+  STROKE_WIDTH: 4         // Width of highlight stroke
+};
+
 // ========== Letter Bag Distribution (Optimized for word formation, 100 total) ==========
 export const LETTER_BAG_DISTRIBUTION = {
   // Vowels - 32 total (32%) - reduced from Scrabble's 42% for better word variety
