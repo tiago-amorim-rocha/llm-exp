@@ -2,9 +2,9 @@
 
 // ========== Physics Constants ==========
 export const PHYSICS = {
-  GRAVITY: 0.5,
+  GRAVITY: 1.0,
   FRICTION: 0.15,
-  BOUNCE: 0.5,          // Restitution
+  BOUNCE: 0.8,          // Restitution
   AIR_FRICTION: 0.02,   // Air resistance
   BASE_DENSITY: 0.001,  // Base density for mass calculation
   SLOP: 0.05,           // Collision tolerance (reduces jitter)
