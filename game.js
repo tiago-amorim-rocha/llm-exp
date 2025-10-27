@@ -2,7 +2,7 @@
 
 import { initDebugConsole } from './debugConsole.js';
 import { letterBag } from './letterBag.js';
-import { PHYSICS, BALL, SPAWN, SELECTION, SCORE, getColorForLetter, getRadiusForLetter } from './config.js';
+import { PHYSICS, BALL, SPAWN, SELECTION, SCORE, DANGER, getColorForLetter, getRadiusForLetter } from './config.js';
 import { engine, createWalls, createBallBody, createPhysicsInterface, updatePhysics, addToWorld, removeFromWorld } from './physics.js';
 import { initSelection, handleTouchStart, handleTouchMove, handleTouchEnd, getSelection, getTouchPosition, isSelectionActive, getSelectedWord } from './selection.js';
 import { wordValidator } from './wordValidator.js';
@@ -100,6 +100,14 @@ try {
   const balls = [];
   const walls = createWalls(logicalWidth, logicalHeight);
 
+  // Game state
+  let isGameOver = false;
+
+  // Danger zone tracking
+  const dangerZoneY = safeAreaTop + SCORE.PADDING + SCORE.FONT_SIZE + SCORE.FONT_SIZE_HIGH + DANGER.LINE_Y_OFFSET;
+  let dangerStartTime = null; // When first ball entered danger zone
+  let ballsInDanger = new Set(); // Track which balls are currently in danger
+
   // Expose physics interface to debug console
   createPhysicsInterface(balls, walls);
 
@@ -127,6 +135,7 @@ try {
   let spawnIndex = 0;
   let lastSpawnTime = 0;
   let isRetrying = false;
+  let continuousSpawnInterval = null; // Timer for continuous spawning
 
   // Check if a position would collide with existing balls
   function wouldCollide(x, y, radius) {
@@ -141,10 +150,54 @@ try {
     return false;
   }
 
+  // Spawn a single ball (used for continuous spawning)
+  function spawnSingleBall() {
+    const letter = letterBag.draw();
+    if (!letter) {
+      console.warn('Bag is empty, cannot spawn ball');
+      return false;
+    }
+
+    const radius = getRadiusForLetter(letter);
+    const color = getColorForLetter(letter);
+
+    // Try to find non-colliding position
+    const maxAttempts = 10;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const spawnX = radius + Math.random() * (logicalWidth - 2 * radius);
+      const spawnY = -SPAWN.ZONE_HEIGHT + Math.random() * SPAWN.ZONE_HEIGHT;
+
+      if (!wouldCollide(spawnX, spawnY, radius)) {
+        const newBall = {
+          x: spawnX,
+          y: spawnY,
+          vx: 0,
+          vy: SPAWN.INITIAL_VELOCITY,
+          radius: radius,
+          color: color,
+          letter: letter,
+        };
+
+        newBall.body = createBallBody(newBall.x, newBall.y, newBall.radius);
+        Matter.Body.setVelocity(newBall.body, { x: 0, y: SPAWN.INITIAL_VELOCITY });
+        newBall.body.ballData = newBall;
+        addToWorld(newBall.body);
+        balls.push(newBall);
+
+        return true;
+      }
+    }
+
+    // Failed to find valid position - return letter
+    letterBag.return(letter);
+    console.warn('Could not find valid spawn position');
+    return false;
+  }
+
   // Spawn the next ball
   function spawnNextBall() {
     if (spawnIndex >= ballsToSpawn.length) {
-      // All balls spawned - log final state
+      // All balls spawned - log final state and start continuous spawning
       if (spawnIndex === ballsToSpawn.length) {
         const bagState = letterBag.getState();
         console.log(`All ${balls.length} balls spawned! | Bag: ${bagState.available} available, ${bagState.inPlay} in play, ${bagState.total} total`);
@@ -157,6 +210,14 @@ try {
         const vowelCount = balls.filter(b => 'AEIOU'.includes(b.letter)).length;
         console.log('Letter distribution:', Object.entries(letterCounts).sort().map(([l, c]) => `${l}:${c}`).join(' '));
         console.log(`Vowels: ${vowelCount}/${balls.length} (${Math.round(vowelCount/balls.length*100)}%)`);
+
+        // Start continuous spawning (1 ball every 5 seconds)
+        console.log(`Starting continuous spawn: 1 ball every ${SPAWN.INTERVAL}ms`);
+        continuousSpawnInterval = setInterval(() => {
+          if (!isGameOver) {
+            spawnSingleBall();
+          }
+        }, SPAWN.INTERVAL);
 
         spawnIndex++; // Prevent logging multiple times
       }
@@ -224,6 +285,7 @@ try {
     const centerY = selectedBalls.reduce((sum, ball) => sum + ball.y, 0) / selectedBalls.length;
 
     scoring.addScore(points, centerX, centerY);
+    scoring.addWord(word, points);
     console.log(`+${points} points! Score: ${scoring.getScore()}`);
 
     // Remove balls from physics world and from balls array
@@ -281,6 +343,116 @@ try {
     console.log(`Spawned ${numToSpawn} replacement balls | Bag: ${letterBag.getState().available} available`);
   }
 
+  // Update danger zone tracking
+  function updateDangerZone() {
+    if (isGameOver) return;
+
+    // Clear previous danger set
+    ballsInDanger.clear();
+
+    // Check which balls are in danger (top edge touching danger line)
+    balls.forEach(ball => {
+      const ballTopEdge = ball.y - ball.radius;
+      if (ballTopEdge <= dangerZoneY) {
+        ballsInDanger.add(ball);
+      }
+    });
+
+    // Update danger timer
+    if (ballsInDanger.size > 0) {
+      if (dangerStartTime === null) {
+        dangerStartTime = Date.now();
+        console.log('⚠️ Ball entered danger zone!');
+      }
+
+      const timeInDanger = Date.now() - dangerStartTime;
+      if (timeInDanger >= DANGER.THRESHOLD_TIME) {
+        // Game over!
+        triggerGameOver();
+      }
+    } else {
+      // No balls in danger - reset timer
+      if (dangerStartTime !== null) {
+        console.log('✓ Danger cleared');
+      }
+      dangerStartTime = null;
+    }
+  }
+
+  // Trigger game over
+  function triggerGameOver() {
+    if (isGameOver) return;
+
+    isGameOver = true;
+    console.log('💀 GAME OVER - Screen full!');
+
+    // Stop continuous spawning
+    if (continuousSpawnInterval) {
+      clearInterval(continuousSpawnInterval);
+      continuousSpawnInterval = null;
+    }
+
+    // Log final stats
+    const finalScore = scoring.getScore();
+    const words = scoring.getWords();
+    console.log(`Final Score: ${finalScore}`);
+    console.log(`Words formed: ${words.length}`);
+  }
+
+  // Restart game
+  function restartGame() {
+    console.log('🔄 Restarting game...');
+
+    // Reset game state
+    isGameOver = false;
+    dangerStartTime = null;
+    ballsInDanger.clear();
+
+    // Clear continuous spawning if active
+    if (continuousSpawnInterval) {
+      clearInterval(continuousSpawnInterval);
+      continuousSpawnInterval = null;
+    }
+
+    // Remove all balls from physics world
+    balls.forEach(ball => {
+      if (ball.body) {
+        removeFromWorld(ball.body);
+      }
+      letterBag.return(ball.letter);
+    });
+    balls.length = 0; // Clear array
+
+    // Reset scoring
+    scoring.resetScore();
+
+    // Reset spawning
+    spawnIndex = 0;
+    isRetrying = false;
+
+    // Prepare new balls to spawn
+    ballsToSpawn.length = 0;
+    for (let i = 0; i < BALL.NUM_BALLS; i++) {
+      const letter = letterBag.draw();
+      if (!letter) {
+        console.error('Ran out of letters in bag!');
+        break;
+      }
+
+      const radius = getRadiusForLetter(letter);
+      ballsToSpawn.push({
+        letter: letter,
+        radius: radius,
+        color: getColorForLetter(letter)
+      });
+    }
+
+    // Start spawning again
+    setTimeout(spawnNextBall, 500);
+
+    console.log('✓ Game restarted');
+  }
+
   // Initialize selection system
   initSelection(balls);
 
@@ -291,10 +463,24 @@ try {
     const rect = canvas.getBoundingClientRect();
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
+
+    // Check for restart button click when game over
+    if (isGameOver && window.restartButtonBounds) {
+      const btn = window.restartButtonBounds;
+      if (x >= btn.x && x <= btn.x + btn.width && y >= btn.y && y <= btn.y + btn.height) {
+        restartGame();
+        return;
+      }
+    }
+
+    // Normal touch handling (only if game not over)
+    if (isGameOver) return;
+
     handleTouchStart(x, y);
   }, { passive: false });
 
   canvas.addEventListener('touchmove', (e) => {
+    if (isGameOver) return;
     e.preventDefault();
     const touch = e.touches[0];
     const rect = canvas.getBoundingClientRect();
@@ -304,6 +490,7 @@ try {
   }, { passive: false });
 
   canvas.addEventListener('touchend', (e) => {
+    if (isGameOver) return;
     e.preventDefault();
     const result = handleTouchEnd();
 
@@ -323,8 +510,13 @@ try {
   function draw() {
     ctx.clearRect(0, 0, logicalWidth, logicalHeight);
 
-    // Update Matter.js physics
-    updatePhysics();
+    // Update Matter.js physics (only if game is not over)
+    if (!isGameOver) {
+      updatePhysics();
+    }
+
+    // Update danger zone
+    updateDangerZone();
 
     // Sync ball positions from Matter.js bodies
     balls.forEach(ball => {
@@ -423,6 +615,39 @@ try {
       }
     }
 
+    // Draw danger line
+    const isDanger = ballsInDanger.size > 0;
+    const timeInDanger = isDanger ? Date.now() - dangerStartTime : 0;
+    const timeRemaining = Math.max(0, DANGER.THRESHOLD_TIME - timeInDanger);
+
+    // Line color - flash red when in danger
+    let lineColor = DANGER.LINE_COLOR;
+    if (isDanger) {
+      const flashPhase = Math.floor(Date.now() / DANGER.WARNING_FLASH_SPEED) % 2;
+      lineColor = flashPhase === 0 ? DANGER.LINE_COLOR_DANGER : DANGER.LINE_COLOR;
+    }
+
+    ctx.save();
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = DANGER.LINE_WIDTH;
+    ctx.setLineDash(DANGER.LINE_DASH);
+    ctx.beginPath();
+    ctx.moveTo(0, dangerZoneY);
+    ctx.lineTo(logicalWidth, dangerZoneY);
+    ctx.stroke();
+    ctx.setLineDash([]); // Reset dash
+    ctx.restore();
+
+    // Draw danger timer if balls in danger
+    if (isDanger && !isGameOver) {
+      const secondsRemaining = Math.ceil(timeRemaining / 1000);
+      ctx.font = 'bold 16px system-ui, -apple-system, sans-serif';
+      ctx.fillStyle = DANGER.WARNING_COLOR;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`⚠️ ${secondsRemaining}s`, logicalWidth / 2, dangerZoneY - 5);
+    }
+
     // Update and render score animations
     scoring.updateAnimations();
     const animations = scoring.getAnimations();
@@ -453,6 +678,72 @@ try {
     ctx.font = `${SCORE.FONT_SIZE_HIGH}px system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = SCORE.HIGH_SCORE_COLOR;
     ctx.fillText(`Best: ${highScore}`, logicalWidth - SCORE.PADDING, safeAreaTop + SCORE.PADDING + SCORE.FONT_SIZE + 4);
+
+    // Draw game over UI
+    if (isGameOver) {
+      // Semi-transparent overlay
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+
+      // Final score
+      ctx.fillStyle = '#FFF';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.font = 'bold 48px system-ui, -apple-system, sans-serif';
+      ctx.fillText(currentScore.toString(), logicalWidth / 2, logicalHeight * 0.15);
+
+      // "Final Score" label
+      ctx.font = '20px system-ui, -apple-system, sans-serif';
+      ctx.fillStyle = '#AAA';
+      ctx.fillText('Final Score', logicalWidth / 2, logicalHeight * 0.15 + 55);
+
+      // Words list
+      const words = scoring.getWords();
+      ctx.font = '16px system-ui, -apple-system, sans-serif';
+      ctx.fillStyle = '#FFF';
+
+      const wordsStartY = logicalHeight * 0.32;
+      const maxWordsToShow = 10;
+      const wordsToShow = words.slice(-maxWordsToShow); // Show last 10 words
+
+      if (words.length > 0) {
+        ctx.fillStyle = '#AAA';
+        ctx.fillText(`Words Formed (${words.length})`, logicalWidth / 2, wordsStartY - 30);
+
+        wordsToShow.forEach((wordData, index) => {
+          ctx.fillStyle = '#FFF';
+          const y = wordsStartY + (index * 28);
+          ctx.fillText(`${wordData.word.toUpperCase()} — ${wordData.points}`, logicalWidth / 2, y);
+        });
+
+        if (words.length > maxWordsToShow) {
+          ctx.fillStyle = '#888';
+          ctx.fillText(`...and ${words.length - maxWordsToShow} more`, logicalWidth / 2, wordsStartY + (maxWordsToShow * 28));
+        }
+      } else {
+        ctx.fillStyle = '#888';
+        ctx.fillText('No words formed', logicalWidth / 2, wordsStartY);
+      }
+
+      // Restart button
+      const buttonY = logicalHeight - 120;
+      const buttonWidth = 200;
+      const buttonHeight = 50;
+      const buttonX = (logicalWidth - buttonWidth) / 2;
+
+      // Button background
+      ctx.fillStyle = '#4CAF50';
+      ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+
+      // Button text
+      ctx.fillStyle = '#FFF';
+      ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Restart', logicalWidth / 2, buttonY + buttonHeight / 2);
+
+      // Store button bounds for click detection
+      window.restartButtonBounds = { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight };
+    }
 
     requestAnimationFrame(draw);
   }
