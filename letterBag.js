@@ -1,6 +1,7 @@
 // letterBag.js - Letter distribution and bag management system
 
-import { LETTER_BAG_DISTRIBUTION } from './config.js';
+const v = window.__BUILD || Date.now();
+const { LETTER_BAG_DISTRIBUTION } = await import(`./config.js?v=${v}`);
 
 // Letter bag with Scrabble-like distribution
 // TOTAL: 100 letters that can be drawn and returned

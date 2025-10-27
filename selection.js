@@ -1,6 +1,7 @@
 // selection.js - Multi-ball selection with line-of-sight validation
 
-import { SELECTION } from './config.js';
+const v = window.__BUILD || Date.now();
+const { SELECTION } = await import(`./config.js?v=${v}`);
 
 // Selection state
 let selectedBalls = [];

@@ -1,6 +1,7 @@
 // physics.js - Matter.js physics engine setup and management
 
-import { PHYSICS, BALL } from './config.js';
+const v = window.__BUILD || Date.now();
+const { PHYSICS, BALL } = await import(`./config.js?v=${v}`);
 
 // Matter.js module aliases
 const Engine = Matter.Engine;
