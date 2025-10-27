@@ -25,7 +25,7 @@ export const SPAWN = {
   RETRY_DELAY: 17,        // ms to wait if collision detected
   ZONE_HEIGHT: 100,       // Height above screen to spawn
   INITIAL_VELOCITY: 3,    // Initial downward velocity
-  INTERVAL: 5000          // ms between automatic spawns (survival mode)
+  INTERVAL: 1000          // ms between automatic spawns (survival mode) - 1 second
 };
 
 // ========== Selection ==========
@@ -58,7 +58,8 @@ export const DANGER = {
   LINE_DASH: [10, 5],     // Dashed line pattern
   THRESHOLD_TIME: 5000,   // 5 seconds before game over
   WARNING_COLOR: '#F44336',
-  WARNING_FLASH_SPEED: 500 // ms for warning pulse
+  WARNING_FLASH_SPEED: 500, // ms for warning pulse
+  VELOCITY_THRESHOLD: 2   // Ignore balls moving faster than this (just spawned)
 };
 
 // ========== Letter Bag Distribution (Optimized for word formation, 100 total) ==========

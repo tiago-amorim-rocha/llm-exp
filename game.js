@@ -273,7 +273,7 @@ try {
   // Start spawning after a short delay
   setTimeout(spawnNextBall, 500);
 
-  // Process valid word - remove balls, return letters to bag, spawn new balls
+  // Process valid word - remove balls and return letters to bag
   function processValidWord(selectedBalls, word) {
     console.log(`Valid word: "${word}" - removing ${selectedBalls.length} balls`);
 
@@ -305,42 +305,7 @@ try {
       }
     });
 
-    // Spawn new balls (same amount as removed)
-    const numToSpawn = selectedBalls.length;
-    for (let i = 0; i < numToSpawn; i++) {
-      const letter = letterBag.draw();
-      if (!letter) {
-        console.warn('Bag is empty, cannot spawn replacement ball');
-        break;
-      }
-
-      const radius = getRadiusForLetter(letter);
-      const color = getColorForLetter(letter);
-
-      // Spawn position: random x, above screen
-      const spawnX = radius + Math.random() * (logicalWidth - 2 * radius);
-      const spawnY = -SPAWN.ZONE_HEIGHT + Math.random() * SPAWN.ZONE_HEIGHT;
-
-      const newBall = {
-        x: spawnX,
-        y: spawnY,
-        vx: 0,
-        vy: SPAWN.INITIAL_VELOCITY,
-        radius: radius,
-        color: color,
-        letter: letter,
-      };
-
-      // Create Matter.js body
-      newBall.body = createBallBody(newBall.x, newBall.y, newBall.radius);
-      Matter.Body.setVelocity(newBall.body, { x: 0, y: SPAWN.INITIAL_VELOCITY });
-      newBall.body.ballData = newBall;
-      addToWorld(newBall.body);
-
-      balls.push(newBall);
-    }
-
-    console.log(`Spawned ${numToSpawn} replacement balls | Bag: ${letterBag.getState().available} available`);
+    console.log(`Removed ${selectedBalls.length} balls | ${balls.length} balls remaining | Bag: ${letterBag.getState().available} available`);
   }
 
   // Update danger zone tracking
@@ -351,9 +316,13 @@ try {
     ballsInDanger.clear();
 
     // Check which balls are in danger (top edge touching danger line)
+    // Only count slow-moving balls (not freshly spawned balls falling down)
     balls.forEach(ball => {
       const ballTopEdge = ball.y - ball.radius;
-      if (ballTopEdge <= dangerZoneY) {
+      const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+
+      // Only trigger danger for balls that are moving slowly (settled or near-settled)
+      if (ballTopEdge <= dangerZoneY && speed < DANGER.VELOCITY_THRESHOLD) {
         ballsInDanger.add(ball);
       }
     });
