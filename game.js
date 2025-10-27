@@ -5,6 +5,7 @@ import { letterBag } from './letterBag.js';
 import { PHYSICS, BALL, SPAWN, SELECTION, getColorForLetter, getRadiusForLetter } from './config.js';
 import { engine, createWalls, createBallBody, createPhysicsInterface, updatePhysics, addToWorld } from './physics.js';
 import { initSelection, handleTouchStart, handleTouchMove, handleTouchEnd, getSelection, getTouchPosition, isSelectionActive, getSelectedWord } from './selection.js';
+import { wordValidator } from './wordValidator.js';
 
 // Initialize debug console first
 initDebugConsole();
@@ -312,10 +313,9 @@ try {
         ctx.stroke();
       });
 
-      // Display selected word
+      // Display selected word with validation
       const word = getSelectedWord();
       if (word) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
@@ -327,13 +327,30 @@ try {
         const boxX = logicalWidth / 2 - boxWidth / 2;
         const boxY = safeAreaTop + 10; // Safe area top + 10px padding
 
+        // Check word validity (only for words 2+ letters)
+        const isValid = word.length >= 2 ? wordValidator.isValid(word) : null;
+
+        // Determine colors based on validation
+        let borderColor = SELECTION.HIGHLIGHT_COLOR; // Default (neutral)
+        let bgColor = 'rgba(255, 255, 255, 0.95)';
+
+        if (isValid === true) {
+          // Valid word - green
+          borderColor = '#22c55e';
+          bgColor = 'rgba(34, 197, 94, 0.15)';
+        } else if (isValid === false) {
+          // Invalid word - red
+          borderColor = '#ef4444';
+          bgColor = 'rgba(239, 68, 68, 0.15)';
+        }
+
         // Background box
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillStyle = bgColor;
         ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
 
-        // Border
-        ctx.strokeStyle = SELECTION.HIGHLIGHT_COLOR;
-        ctx.lineWidth = 2;
+        // Border (thicker for valid/invalid)
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = isValid !== null ? 3 : 2;
         ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
         // Text
