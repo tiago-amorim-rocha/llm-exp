@@ -2,8 +2,9 @@
 
 import { initDebugConsole } from './debugConsole.js';
 import { letterBag } from './letterBag.js';
-import { PHYSICS, BALL, SPAWN, getColorForLetter, getRadiusForLetter } from './config.js';
+import { PHYSICS, BALL, SPAWN, SELECTION, getColorForLetter, getRadiusForLetter } from './config.js';
 import { engine, createWalls, createBallBody, createPhysicsInterface, updatePhysics, addToWorld } from './physics.js';
+import { initSelection, handleTouchStart, handleTouchMove, handleTouchEnd, getSelection, getTouchPosition, isSelectionActive, getSelectedWord } from './selection.js';
 
 // Initialize debug console first
 initDebugConsole();
@@ -187,6 +188,33 @@ try {
   // Start spawning after a short delay
   setTimeout(spawnNextBall, 500);
 
+  // Initialize selection system
+  initSelection(balls);
+
+  // Touch event handlers
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    handleTouchStart(x, y);
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    handleTouchMove(x, y);
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    handleTouchEnd();
+  }, { passive: false });
+
   // Main draw loop
   function draw() {
     ctx.clearRect(0, 0, logicalWidth, logicalHeight);
@@ -215,6 +243,82 @@ try {
       ctx.textBaseline = 'middle';
       ctx.fillText(ball.letter, ball.x, ball.y);
     });
+
+    // Draw selection overlay
+    const selectedBalls = getSelection();
+    if (selectedBalls.length > 0) {
+      // Draw connecting lines
+      if (selectedBalls.length > 1) {
+        ctx.strokeStyle = SELECTION.LINE_COLOR;
+        ctx.lineWidth = SELECTION.LINE_WIDTH;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(selectedBalls[0].x, selectedBalls[0].y);
+        for (let i = 1; i < selectedBalls.length; i++) {
+          ctx.lineTo(selectedBalls[i].x, selectedBalls[i].y);
+        }
+        ctx.stroke();
+      }
+
+      // Draw preview line from last selected ball to current touch position
+      if (isSelectionActive()) {
+        const touchPos = getTouchPosition();
+        if (touchPos) {
+          ctx.strokeStyle = SELECTION.LINE_COLOR;
+          ctx.lineWidth = SELECTION.LINE_WIDTH;
+          ctx.globalAlpha = 0.5;
+          ctx.lineCap = 'round';
+
+          ctx.beginPath();
+          const lastBall = selectedBalls[selectedBalls.length - 1];
+          ctx.moveTo(lastBall.x, lastBall.y);
+          ctx.lineTo(touchPos.x, touchPos.y);
+          ctx.stroke();
+
+          ctx.globalAlpha = 1.0;
+        }
+      }
+
+      // Highlight selected balls
+      selectedBalls.forEach(ball => {
+        ctx.strokeStyle = SELECTION.HIGHLIGHT_COLOR;
+        ctx.lineWidth = SELECTION.STROKE_WIDTH;
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      // Display selected word
+      const word = getSelectedWord();
+      if (word) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+
+        const textWidth = ctx.measureText(word).width;
+        const padding = 12;
+        const boxWidth = textWidth + padding * 2;
+        const boxHeight = 40;
+        const boxX = logicalWidth / 2 - boxWidth / 2;
+        const boxY = 20;
+
+        // Background box
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+        // Border
+        ctx.strokeStyle = SELECTION.HIGHLIGHT_COLOR;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+        // Text
+        ctx.fillStyle = '#000';
+        ctx.fillText(word, logicalWidth / 2, boxY + 8);
+      }
+    }
 
     requestAnimationFrame(draw);
   }
