@@ -120,7 +120,7 @@ const debugConsole = (() => {
 
   const gravityInput = createInput('Gravity', '0.5', '0', '2', '0.1');
   const frictionInput = createInput('Friction', '0.15', '0', '1', '0.01');
-  const bounceInput = createInput('Bounce', '0.3', '0', '1', '0.05');
+  const bounceInput = createInput('Bounce', '0.5', '0', '1', '0.05');
 
   settings.appendChild(gravityInput.wrapper);
   settings.appendChild(frictionInput.wrapper);
@@ -519,7 +519,7 @@ try {
   // Physics constants (editable via debug console)
   let GRAVITY = 0.5;
   let FRICTION = 0.15;
-  let BOUNCE = 0.3;
+  let BOUNCE = 0.5;
 
   // Create walls (NO TOP WALL - balls spawn from above)
   const wallOptions = {
@@ -612,10 +612,15 @@ try {
     };
 
     // Create Matter.js body
+    // Density scales with radius to simulate 3D mass (bigger balls are proportionally heavier)
+    const baseDensity = 0.001;
+    const baseRadius = 37.5; // Midpoint between min (30) and max (45)
+    const scaledDensity = baseDensity * (newBall.radius / baseRadius);
+
     newBall.body = Bodies.circle(newBall.x, newBall.y, newBall.radius, {
       restitution: BOUNCE,
       friction: FRICTION,
-      density: 0.001,
+      density: scaledDensity,
       frictionAir: 0.02,
       slop: 0.05,
       sleepThreshold: 60
