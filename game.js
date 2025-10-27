@@ -3,7 +3,7 @@
 import { initDebugConsole } from './debugConsole.js';
 import { letterBag } from './letterBag.js';
 import { PHYSICS, BALL, SPAWN, SELECTION, getColorForLetter, getRadiusForLetter } from './config.js';
-import { engine, createWalls, createBallBody, createPhysicsInterface, updatePhysics, addToWorld } from './physics.js';
+import { engine, createWalls, createBallBody, createPhysicsInterface, updatePhysics, addToWorld, removeFromWorld } from './physics.js';
 import { initSelection, handleTouchStart, handleTouchMove, handleTouchEnd, getSelection, getTouchPosition, isSelectionActive, getSelectedWord } from './selection.js';
 import { wordValidator } from './wordValidator.js';
 
@@ -211,6 +211,65 @@ try {
   // Start spawning after a short delay
   setTimeout(spawnNextBall, 500);
 
+  // Process valid word - remove balls, return letters to bag, spawn new balls
+  function processValidWord(selectedBalls, word) {
+    console.log(`Valid word: "${word}" - removing ${selectedBalls.length} balls`);
+
+    // Remove balls from physics world and from balls array
+    selectedBalls.forEach(ball => {
+      // Remove from Matter.js world
+      if (ball.body) {
+        removeFromWorld(ball.body);
+      }
+
+      // Return letter to bag
+      letterBag.return(ball.letter);
+
+      // Remove from balls array
+      const index = balls.indexOf(ball);
+      if (index > -1) {
+        balls.splice(index, 1);
+      }
+    });
+
+    // Spawn new balls (same amount as removed)
+    const numToSpawn = selectedBalls.length;
+    for (let i = 0; i < numToSpawn; i++) {
+      const letter = letterBag.draw();
+      if (!letter) {
+        console.warn('Bag is empty, cannot spawn replacement ball');
+        break;
+      }
+
+      const radius = getRadiusForLetter(letter);
+      const color = getColorForLetter(letter);
+
+      // Spawn position: random x, above screen
+      const spawnX = radius + Math.random() * (logicalWidth - 2 * radius);
+      const spawnY = -SPAWN.ZONE_HEIGHT + Math.random() * SPAWN.ZONE_HEIGHT;
+
+      const newBall = {
+        x: spawnX,
+        y: spawnY,
+        vx: 0,
+        vy: SPAWN.INITIAL_VELOCITY,
+        radius: radius,
+        color: color,
+        letter: letter,
+      };
+
+      // Create Matter.js body
+      newBall.body = createBallBody(newBall.x, newBall.y, newBall.radius);
+      Matter.Body.setVelocity(newBall.body, { x: 0, y: SPAWN.INITIAL_VELOCITY });
+      newBall.body.ballData = newBall;
+      addToWorld(newBall.body);
+
+      balls.push(newBall);
+    }
+
+    console.log(`Spawned ${numToSpawn} replacement balls | Bag: ${letterBag.getState().available} available`);
+  }
+
   // Initialize selection system
   initSelection(balls);
 
@@ -235,7 +294,18 @@ try {
 
   canvas.addEventListener('touchend', (e) => {
     e.preventDefault();
-    handleTouchEnd();
+    const result = handleTouchEnd();
+
+    // Validate word and process if valid
+    if (result && result.word && result.balls.length >= 2) {
+      const isValid = wordValidator.isValid(result.word);
+
+      if (isValid) {
+        processValidWord(result.balls, result.word);
+      } else {
+        console.log(`Invalid word: "${result.word}"`);
+      }
+    }
   }, { passive: false });
 
   // Main draw loop
@@ -313,7 +383,7 @@ try {
         ctx.stroke();
       });
 
-      // Display selected word with validation
+      // Display selected word (neutral, no validation during selection)
       const word = getSelectedWord();
       if (word) {
         ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
@@ -327,30 +397,13 @@ try {
         const boxX = logicalWidth / 2 - boxWidth / 2;
         const boxY = safeAreaTop + 10; // Safe area top + 10px padding
 
-        // Check word validity (only for words 2+ letters)
-        const isValid = word.length >= 2 ? wordValidator.isValid(word) : null;
-
-        // Determine colors based on validation
-        let borderColor = SELECTION.HIGHLIGHT_COLOR; // Default (neutral)
-        let bgColor = 'rgba(255, 255, 255, 0.95)';
-
-        if (isValid === true) {
-          // Valid word - green
-          borderColor = '#22c55e';
-          bgColor = 'rgba(34, 197, 94, 0.15)';
-        } else if (isValid === false) {
-          // Invalid word - red
-          borderColor = '#ef4444';
-          bgColor = 'rgba(239, 68, 68, 0.15)';
-        }
-
-        // Background box
-        ctx.fillStyle = bgColor;
+        // Background box (neutral white)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
         ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
 
-        // Border (thicker for valid/invalid)
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = isValid !== null ? 3 : 2;
+        // Border (neutral)
+        ctx.strokeStyle = SELECTION.HIGHLIGHT_COLOR;
+        ctx.lineWidth = 2;
         ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
         // Text

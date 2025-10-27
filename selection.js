@@ -167,9 +167,16 @@ export function handleTouchMove(x, y) {
   return false;
 }
 
-// Handle touch end
+// Handle touch end - returns selected balls and word for processing
 export function handleTouchEnd() {
+  const result = {
+    balls: [...selectedBalls],
+    word: getSelectedWord()
+  };
+
   clearSelection();
+
+  return result;
 }
 
 // Get selected word (for future word validation)
