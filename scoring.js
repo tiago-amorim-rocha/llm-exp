@@ -7,6 +7,7 @@ class ScoringSystem {
     this.currentScore = 0;
     this.highScore = this.loadHighScore();
     this.animations = []; // For floating +points animations
+    this.words = []; // Track all words formed this game
   }
 
   // Calculate score based on word length (exponential growth)
@@ -43,6 +44,16 @@ class ScoringSystem {
     }
   }
 
+  // Add a word to the list
+  addWord(word, points) {
+    this.words.push({ word, points });
+  }
+
+  // Get all words formed
+  getWords() {
+    return this.words;
+  }
+
   // Get current score
   getScore() {
     return this.currentScore;
@@ -57,6 +68,7 @@ class ScoringSystem {
   resetScore() {
     this.currentScore = 0;
     this.animations = [];
+    this.words = [];
   }
 
   // Update animations (call in draw loop)

@@ -16,7 +16,7 @@ export const BALL = {
   MIN_RADIUS: 30,
   MAX_RADIUS: 45,
   BASE_RADIUS: 37.5,  // Midpoint for density scaling
-  NUM_BALLS: 40
+  NUM_BALLS: 20       // Initial balls (reduced for survival mode)
 };
 
 // ========== Spawning ==========
@@ -24,7 +24,8 @@ export const SPAWN = {
   DELAY: 50,              // ms between spawn attempts
   RETRY_DELAY: 17,        // ms to wait if collision detected
   ZONE_HEIGHT: 100,       // Height above screen to spawn
-  INITIAL_VELOCITY: 3     // Initial downward velocity
+  INITIAL_VELOCITY: 3,    // Initial downward velocity
+  INTERVAL: 5000          // ms between automatic spawns (survival mode)
 };
 
 // ========== Selection ==========
@@ -46,6 +47,18 @@ export const SCORE = {
   ANIMATION_FONT_SIZE: 32,
   ANIMATION_COLOR: '#4CAF50', // Green for points animation
   ANIMATION_FONT_WEIGHT: 'bold'
+};
+
+// ========== Danger Zone ==========
+export const DANGER = {
+  LINE_Y_OFFSET: 60,      // Pixels below score UI
+  LINE_COLOR: '#FF9800',  // Orange when safe
+  LINE_COLOR_DANGER: '#F44336', // Red when ball in danger
+  LINE_WIDTH: 3,
+  LINE_DASH: [10, 5],     // Dashed line pattern
+  THRESHOLD_TIME: 5000,   // 5 seconds before game over
+  WARNING_COLOR: '#F44336',
+  WARNING_FLASH_SPEED: 500 // ms for warning pulse
 };
 
 // ========== Letter Bag Distribution (Optimized for word formation, 100 total) ==========
