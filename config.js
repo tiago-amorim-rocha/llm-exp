@@ -27,14 +27,14 @@ export const SPAWN = {
   INITIAL_VELOCITY: 3     // Initial downward velocity
 };
 
-// ========== Letter Bag Distribution (Scrabble-like, 100 total) ==========
+// ========== Letter Bag Distribution (Optimized for word formation, 100 total) ==========
 export const LETTER_BAG_DISTRIBUTION = {
-  // Vowels - 42 total (42%)
-  'A': 9, 'E': 12, 'I': 9, 'O': 8, 'U': 4,
-  // Common consonants - 37 total
-  'N': 6, 'R': 6, 'T': 6, 'L': 4, 'S': 4, 'D': 4, 'G': 3, 'H': 2, 'Y': 2,
-  // Moderate consonants - 18 total
-  'B': 2, 'C': 2, 'M': 2, 'P': 2, 'F': 2, 'W': 2, 'V': 2, 'K': 1, 'J': 1, 'X': 1,
+  // Vowels - 32 total (32%) - reduced from Scrabble's 42% for better word variety
+  'A': 7, 'E': 9, 'I': 7, 'O': 6, 'U': 3,
+  // Common consonants - 44 total (increased for better word formation)
+  'N': 7, 'R': 7, 'T': 7, 'L': 5, 'S': 5, 'D': 5, 'G': 4, 'H': 2, 'Y': 2,
+  // Moderate consonants - 21 total
+  'B': 3, 'C': 3, 'M': 3, 'P': 3, 'F': 2, 'W': 2, 'V': 2, 'K': 1, 'J': 1, 'X': 1,
   // Rare consonants - 3 total
   'Q': 1, 'Z': 2
 };

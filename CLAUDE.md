@@ -17,7 +17,8 @@ index.html          - Entry point, loads game.js as ES6 module
 ## Key Systems
 
 ### Letter Bag System
-- 100-letter pool with Scrabble-like distribution (42% vowels)
+- 100-letter pool optimized for word formation (32% vowels, 68% consonants)
+- Reduced vowel ratio vs Scrabble (32% vs 42%) for better variety with 40 balls on screen
 - Letters can be drawn and returned (for future word removal feature)
 - Exposed as `window.letterBag`
 
