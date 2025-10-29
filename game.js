@@ -4,9 +4,11 @@
 const v = window.__BUILD || Date.now();
 const debugConsoleModule = await import(`./debugConsole.js?v=${v}`);
 const configModule = await import(`./config.js?v=${v}`);
+const geminiModule = await import(`./gemini.js?v=${v}`);
 
 const { initDebugConsole } = debugConsoleModule;
 const { UI } = configModule;
+const { callGemini } = geminiModule;
 
 // Initialize debug console first
 initDebugConsole();
@@ -106,8 +108,8 @@ try {
     whiteSpace: 'pre-wrap',
   });
 
-  // Submit handler (placeholder for future LLM integration)
-  submitButton.addEventListener('click', () => {
+  // Submit handler with Gemini API integration
+  submitButton.addEventListener('click', async () => {
     const prompt = promptInput.value.trim();
 
     if (!prompt) {
@@ -117,17 +119,26 @@ try {
       return;
     }
 
-    // Placeholder for LLM API call
+    // Call Gemini API
     resultDisplay.textContent = 'Processing...';
     resultDisplay.style.color = UI.ACCENT_COLOR;
+    submitButton.disabled = true;
+    submitButton.style.opacity = '0.5';
     console.log('Prompt submitted:', prompt);
 
-    // Simulate API call (replace this with actual LLM integration later)
-    setTimeout(() => {
-      resultDisplay.textContent = `Echo response:\n\n"${prompt}"\n\n(LLM integration pending)`;
+    try {
+      const response = await callGemini(prompt);
+      resultDisplay.textContent = response;
       resultDisplay.style.color = UI.TEXT_COLOR;
-      console.log('Response generated (mock)');
-    }, 1000);
+      console.log('Response generated successfully');
+    } catch (error) {
+      resultDisplay.textContent = `Error: ${error.message}\n\nPlease check the console for more details.`;
+      resultDisplay.style.color = '#f44336';
+      console.error('Error generating response:', error);
+    } finally {
+      submitButton.disabled = false;
+      submitButton.style.opacity = '1';
+    }
   });
 
   // Allow Enter key to submit (with Shift+Enter for new line)
