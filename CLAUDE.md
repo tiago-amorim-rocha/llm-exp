@@ -35,12 +35,22 @@ index.html          - Entry point, loads game.js as ES6 module
 - Spawning: Drop from above, collision-checked, 50ms intervals
 - Size directly correlates with bag distribution (simpler, single source of truth)
 
+### Tap Force (Board Manipulation)
+- Tap anywhere (not dragging) to apply small explosion force
+- Helps players nudge balls into position for word formation
+- Radius: 150px, force diminishes with distance (inverse square falloff)
+- Only triggers on tap (movement < 10px), doesn't interfere with selection
+
 ### Debug Console
 - Toggle: Click 🐛 button (bottom-right)
 - Live physics adjustment (gravity, friction, bounce)
 - Console output capture
 
 ## Recent Changes
+- Added tap-to-force feature for board manipulation (helps form words)
+  - Tap applies radial force to nearby balls
+  - Smart tap vs drag detection (10px threshold)
+  - No interference with word selection
 - Refactored into modular architecture (5 modules + main)
 - Removed LETTER_FREQUENCY - ball size now based on bag distribution only
 - Physics stability improvements (reduced jitter, better settling)

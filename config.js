@@ -63,6 +63,13 @@ export const DANGER = {
   VELOCITY_THRESHOLD: 2   // Ignore balls moving faster than this (just spawned)
 };
 
+// ========== Tap Force ==========
+export const TAP_FORCE = {
+  STRENGTH: 0.15,         // Force magnitude applied to balls
+  RADIUS: 150,            // Radius of force application (pixels)
+  MIN_DRAG_DISTANCE: 10   // Min distance to be considered a drag (not tap)
+};
+
 // ========== Letter Bag Distribution (Optimized for word formation, 100 total) ==========
 export const LETTER_BAG_DISTRIBUTION = {
   // Vowels - 32 total (32%) - reduced from Scrabble's 42% for better word variety

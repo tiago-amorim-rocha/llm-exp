@@ -91,3 +91,31 @@ export function addToWorld(body) {
 export function removeFromWorld(body) {
   World.remove(engine.world, body);
 }
+
+// Apply explosion force at a point (tap force feature)
+export function applyExplosionForce(balls, x, y, radius, strength) {
+  balls.forEach(ball => {
+    if (!ball.body) return;
+
+    // Calculate distance from tap point to ball center
+    const dx = ball.x - x;
+    const dy = ball.y - y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Only apply force if ball is within radius
+    if (distance < radius && distance > 0) {
+      // Normalize direction vector
+      const dirX = dx / distance;
+      const dirY = dy / distance;
+
+      // Force decreases with distance (inverse square-ish falloff)
+      const forceMagnitude = strength * (1 - distance / radius) * (1 - distance / radius);
+
+      // Apply impulse to ball
+      Body.applyForce(ball.body, ball.body.position, {
+        x: dirX * forceMagnitude,
+        y: dirY * forceMagnitude
+      });
+    }
+  });
+}

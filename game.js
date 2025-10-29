@@ -12,8 +12,8 @@ const scoringModule = await import(`./scoring.js?v=${v}`);
 
 const { initDebugConsole } = debugConsoleModule;
 const { letterBag } = letterBagModule;
-const { PHYSICS, BALL, SPAWN, SELECTION, SCORE, DANGER, getColorForLetter, getRadiusForLetter } = configModule;
-const { engine, createWalls, createBallBody, createPhysicsInterface, updatePhysics, addToWorld, removeFromWorld } = physicsModule;
+const { PHYSICS, BALL, SPAWN, SELECTION, SCORE, DANGER, TAP_FORCE, getColorForLetter, getRadiusForLetter } = configModule;
+const { engine, createWalls, createBallBody, createPhysicsInterface, updatePhysics, addToWorld, removeFromWorld, applyExplosionForce } = physicsModule;
 const { initSelection, handleTouchStart, handleTouchMove, handleTouchEnd, getSelection, getTouchPosition, isSelectionActive, getSelectedWord } = selectionModule;
 const { wordValidator } = wordValidatorModule;
 const { scoring } = scoringModule;
@@ -437,6 +437,10 @@ try {
   // Initialize selection system
   initSelection(balls);
 
+  // Tap detection state
+  let touchStartPos = null;
+  let hasDragged = false;
+
   // Touch event handlers
   canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
@@ -457,6 +461,10 @@ try {
     // Normal touch handling (only if game not over)
     if (isGameOver) return;
 
+    // Track initial touch position for tap detection
+    touchStartPos = { x, y };
+    hasDragged = false;
+
     handleTouchStart(x, y);
   }, { passive: false });
 
@@ -467,6 +475,17 @@ try {
     const rect = canvas.getBoundingClientRect();
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
+
+    // Check if significant movement occurred (dragging)
+    if (touchStartPos && !hasDragged) {
+      const dx = x - touchStartPos.x;
+      const dy = y - touchStartPos.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance > TAP_FORCE.MIN_DRAG_DISTANCE) {
+        hasDragged = true;
+      }
+    }
+
     handleTouchMove(x, y);
   }, { passive: false });
 
@@ -474,6 +493,13 @@ try {
     if (isGameOver) return;
     e.preventDefault();
     const result = handleTouchEnd();
+
+    // Check if this was a tap (no drag and no ball selected)
+    if (!hasDragged && touchStartPos && (!result || result.balls.length === 0)) {
+      // Apply explosion force at tap location
+      applyExplosionForce(balls, touchStartPos.x, touchStartPos.y, TAP_FORCE.RADIUS, TAP_FORCE.STRENGTH);
+      console.log(`💥 Tap force applied at (${Math.round(touchStartPos.x)}, ${Math.round(touchStartPos.y)})`);
+    }
 
     // Validate word and process if valid
     if (result && result.word && result.balls.length >= 2) {
@@ -485,6 +511,10 @@ try {
         console.log(`Invalid word: "${result.word}"`);
       }
     }
+
+    // Reset tap detection state
+    touchStartPos = null;
+    hasDragged = false;
   }, { passive: false });
 
   // Main draw loop
