@@ -1,7 +1,4 @@
-// debugConsole.js - Debug UI with physics controls and console logging
-
-const v = window.__BUILD || Date.now();
-const { PHYSICS } = await import(`./config.js?v=${v}`);
+// debugConsole.js - Debug UI with console logging
 
 export function initDebugConsole() {
   const container = document.createElement('div');
@@ -71,79 +68,6 @@ export function initDebugConsole() {
   header.appendChild(title);
   header.appendChild(buttonContainer);
 
-  // Settings section
-  const settings = document.createElement('div');
-  Object.assign(settings.style, {
-    padding: '10px',
-    background: '#1a1a1a',
-    borderBottom: '1px solid #333',
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '8px',
-    fontSize: '11px',
-  });
-
-  const settingsTitle = document.createElement('div');
-  settingsTitle.textContent = 'Physics Settings';
-  settingsTitle.style.gridColumn = '1 / -1';
-  settingsTitle.style.fontWeight = 'bold';
-  settingsTitle.style.marginBottom = '4px';
-  settings.appendChild(settingsTitle);
-
-  // Helper to create labeled input
-  function createInput(label, value, min, max, step) {
-    const wrapper = document.createElement('div');
-    const labelEl = document.createElement('label');
-    labelEl.textContent = label;
-    labelEl.style.display = 'block';
-    labelEl.style.marginBottom = '2px';
-    labelEl.style.color = '#aaa';
-
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.value = value;
-    input.min = min;
-    input.max = max;
-    input.step = step;
-    Object.assign(input.style, {
-      width: '100%',
-      padding: '4px',
-      background: '#222',
-      color: '#fff',
-      border: '1px solid #444',
-      borderRadius: '3px',
-      fontSize: '11px',
-    });
-
-    wrapper.appendChild(labelEl);
-    wrapper.appendChild(input);
-    return { wrapper, input };
-  }
-
-  const gravityInput = createInput('Gravity', PHYSICS.GRAVITY, '0', '2', '0.1');
-  const frictionInput = createInput('Friction', PHYSICS.FRICTION, '0', '1', '0.01');
-  const bounceInput = createInput('Bounce', PHYSICS.BOUNCE, '0', '1', '0.05');
-
-  settings.appendChild(gravityInput.wrapper);
-  settings.appendChild(frictionInput.wrapper);
-  settings.appendChild(bounceInput.wrapper);
-
-  // Apply button
-  const applyBtn = document.createElement('button');
-  applyBtn.textContent = 'Apply Settings';
-  Object.assign(applyBtn.style, {
-    gridColumn: '1 / -1',
-    padding: '6px',
-    background: '#2196f3',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '3px',
-    cursor: 'pointer',
-    fontSize: '11px',
-    marginTop: '4px',
-  });
-  settings.appendChild(applyBtn);
-
   const messages = document.createElement('div');
   Object.assign(messages.style, {
     padding: '10px',
@@ -152,7 +76,6 @@ export function initDebugConsole() {
   });
 
   container.appendChild(header);
-  container.appendChild(settings);
   container.appendChild(messages);
   document.body.appendChild(container);
 
@@ -160,7 +83,7 @@ export function initDebugConsole() {
   toggleBtn.textContent = '🐛';
   Object.assign(toggleBtn.style, {
     position: 'fixed',
-    bottom: '100px',
+    bottom: '20px',
     right: '20px',
     width: '40px',
     height: '40px',
@@ -204,30 +127,6 @@ export function initDebugConsole() {
   });
 
   clearBtn.addEventListener('click', () => (messages.innerHTML = ''));
-
-  applyBtn.addEventListener('click', () => {
-    if (window.gamePhysics) {
-      window.gamePhysics.gravity = parseFloat(gravityInput.input.value);
-      window.gamePhysics.friction = parseFloat(frictionInput.input.value);
-      window.gamePhysics.bounce = parseFloat(bounceInput.input.value);
-
-      const originalText = applyBtn.textContent;
-      const originalBg = applyBtn.style.background;
-      applyBtn.textContent = 'Applied!';
-      applyBtn.style.background = '#4caf50';
-
-      console.log('Physics settings updated:', {
-        gravity: window.gamePhysics.gravity,
-        friction: window.gamePhysics.friction,
-        bounce: window.gamePhysics.bounce,
-      });
-
-      setTimeout(() => {
-        applyBtn.textContent = originalText;
-        applyBtn.style.background = originalBg;
-      }, 1500);
-    }
-  });
 
   function addMessage(type, args) {
     const msg = document.createElement('div');

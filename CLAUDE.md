@@ -1,73 +1,60 @@
-# Hello World - Letter Ball Physics Game
+# LLM Town
 
 ## Quick Context
-A physics-based game where letter balls (A-Z) drop from above and settle using Matter.js. Ball size and mass correlate with letter frequency in English.
+A web application for creating a simulated town with agents controlled by LLM API calls. Currently in early stages with a basic UI for prompt testing.
 
-## Architecture (5 modules + 1 main)
+## Architecture (3 modules + 1 main)
 
 ```
 index.html          - Entry point, loads game.js as ES6 module
-├── config.js       - All constants (physics, spawning, sizes)
-├── debugConsole.js - Debug UI with physics controls (self-contained)
-├── letterBag.js    - Letter distribution & bag management (Scrabble-like)
-├── physics.js      - Matter.js engine setup & physics helpers
-└── game.js         - Main: canvas, spawning, rendering, coordination
+├── config.js       - UI constants and configuration
+├── debugConsole.js - Debug console for logging (self-contained)
+└── game.js         - Main: UI, application logic, coordination
 ```
 
 ## Key Systems
 
-### Letter Bag System
-- 100-letter pool optimized for word formation (32% vowels, 68% consonants)
-- Reduced vowel ratio vs Scrabble (32% vs 42%) for better variety with 40 balls on screen
-- Letters can be drawn and returned (for future word removal feature)
-- Exposed as `window.letterBag`
-
-### Physics (Matter.js)
-- Gravity: 0.5 (customizable via debug console)
-- Bounce: 0.5 (restitution)
-- Friction: 0.15 (surface), 0.02 (air)
-- Sleep threshold: 60 (balls rest when nearly motionless)
-- Mass scales with ball size (density ∝ radius)
-
-### Ball Properties
-- Radius: 30-45px (based on bag count: E=12 largest, Q/K/J/X=1 smallest)
-- Color: Consistent per letter (HSL based on alphabet position)
-- Spawning: Drop from above, collision-checked, 50ms intervals
-- Size directly correlates with bag distribution (simpler, single source of truth)
-
-### Tap Force (Board Manipulation)
-- Tap anywhere (not dragging) to apply small explosion force
-- Helps players nudge balls into position for word formation
-- Radius: 150px, force diminishes with distance (inverse square falloff)
-- Only triggers on tap (movement < 10px), doesn't interfere with selection
+### Cache Busting
+- Version-aware module imports using `window.__BUILD`
+- Reads from `version.txt` or falls back to timestamp
+- All module imports use `?v=${v}` parameter to prevent stale caches
 
 ### Debug Console
 - Toggle: Click 🐛 button (bottom-right)
-- Live physics adjustment (gravity, friction, bounce)
-- Console output capture
+- Console output capture (log, warn, error, info)
+- Copy and clear functionality
+- Self-contained logging system
 
-## Recent Changes
-- Added tap-to-force feature for board manipulation (helps form words)
-  - Tap applies radial force to nearby balls
-  - Smart tap vs drag detection (10px threshold)
-  - No interference with word selection
-- Refactored into modular architecture (5 modules + main)
-- Removed LETTER_FREQUENCY - ball size now based on bag distribution only
-- Physics stability improvements (reduced jitter, better settling)
-- Mass scales with ball size for realistic interactions
-- Gravity at 1.0, bounce at 0.8
+### UI System
+- Simple prompt input textarea
+- Submit button with keyboard support (Enter to submit, Shift+Enter for newline)
+- Result display area for API responses
+- Dark theme with consistent styling
+
+## Current Features
+- Basic UI for entering prompts and viewing results
+- Mock API response (echo back the prompt)
+- Debug console for development
+- Responsive layout
+
+## Future Development
+- Integration with LLM API for actual agent behavior
+- Town visualization and simulation
+- Multiple agents with individual personalities
+- Agent interaction system
+- Persistent state management
 
 ## How to Update This File
 **Update when:**
 - Adding/removing modules
 - Changing core architecture or systems
-- Major physics/gameplay adjustments
-- Adding new features (word formation, scoring, etc.)
+- Adding new major features
+- Significant UI/UX changes
 
 **Don't update for:**
 - Minor tweaks to constants
 - Bug fixes
 - Code refactoring within same module
-- Small physics adjustments
+- Small styling adjustments
 
-Keep this file under 100 lines - focus on WHAT and WHY, not HOW.
+Keep this file concise - focus on WHAT and WHY, not HOW.
