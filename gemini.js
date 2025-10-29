@@ -2,7 +2,7 @@
 
 // Gemini API configuration
 const GEMINI_API_KEY = 'AIzaSyCpWEffL6jIpkSkUfZu-jj3BC_btV-piRk';
-const GEMINI_MODEL = 'gemini-2.5-flash'; // Fast, simple model
+const GEMINI_MODEL = 'gemini-2.5-flash-lite'; // Fastest model (887 tokens/sec)
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
 /**
