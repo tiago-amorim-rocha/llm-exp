@@ -1,3 +1,4 @@
+# Auto-promotes claude/** branches to main after successful push
 name: Auto-promote Claude branch to main
 on:
   push:

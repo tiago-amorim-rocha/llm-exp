@@ -1,3 +1,4 @@
+# Note: Only needed if using "GitHub Actions" as Pages source (not "Deploy from a branch")
 name: Deploy to GitHub Pages
 on:
   push:
