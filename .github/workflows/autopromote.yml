@@ -23,5 +23,5 @@ jobs:
         run: |
           git fetch origin main
           git checkout main
-          git merge --no-ff "$BRANCH" -m "auto: promote $BRANCH into main"
+          git merge --no-ff "origin/$BRANCH" -m "auto: promote $BRANCH into main"
           git push origin main
