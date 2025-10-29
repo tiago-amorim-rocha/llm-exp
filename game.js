@@ -126,13 +126,21 @@ try {
     submitButton.style.opacity = '0.5';
     console.log('Prompt submitted:', prompt);
 
+    const startTime = performance.now();
+
     try {
       const response = await callGemini(prompt);
-      resultDisplay.textContent = response;
+      const endTime = performance.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+      resultDisplay.textContent = `${response}\n\n───────────────────\n⏱️ Response time: ${duration}s`;
       resultDisplay.style.color = UI.TEXT_COLOR;
-      console.log('Response generated successfully');
+      console.log(`Response generated successfully in ${duration}s`);
     } catch (error) {
-      resultDisplay.textContent = `Error: ${error.message}\n\nPlease check the console for more details.`;
+      const endTime = performance.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+      resultDisplay.textContent = `Error: ${error.message}\n\nPlease check the console for more details.\n\n───────────────────\n⏱️ Failed after: ${duration}s`;
       resultDisplay.style.color = '#f44336';
       console.error('Error generating response:', error);
     } finally {
